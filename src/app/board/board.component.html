@@ -1,0 +1,24 @@
+<div class="board-container">
+    <a routerLink="/" class="back-link">← トップに戻る</a>
+  
+    <h1>ボードID: <span class="highlight">{{ boardId }}</span></h1>
+    <p class="url-info">
+      現在のURL: <code>{{ currentUrl }}</code>
+    </p>
+  
+    <hr>
+  
+    <div class="form-group">
+      <input 
+        [(ngModel)]="newTaskTitle" 
+        placeholder="新しい課題を入力..." 
+        (keyup.enter)="add()"
+      />
+      <button (click)="add()">課題を追加</button>
+    </div>
+  
+    <h3>課題一覧</h3>
+    <ul>
+      <li *ngFor="let t of tasks">{{ t }}</li>
+    </ul>
+  </div>

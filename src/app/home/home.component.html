@@ -1,0 +1,28 @@
+<div class="home-container">
+    <h2>Issue Manager</h2>
+  
+    <!-- 選択肢 1: 新規作成 -->
+    <div class="card">
+      <h3>① 新しいボードを発行する</h3>
+      <p class="description">まっさらな新しいボードを作成してアクセスします。</p>
+      <button class="btn-primary" (click)="createRandomBoard()">
+        新規ボードを作成
+      </button>
+    </div>
+  
+    <!-- 選択肢 2: 既存接続 -->
+    <div class="card">
+      <h3>② 既存のボードに接続する</h3>
+      <p class="description">ボードIDを入力して直接アクセスします。</p>
+      <div class="input-group">
+        <input 
+          [(ngModel)]="targetBoardId" 
+          placeholder="ボードID (例: dev-team)" 
+          (keyup.enter)="joinBoard()"
+        />
+        <button class="btn-primary" (click)="joinBoard()">
+          接続
+        </button>
+      </div>
+    </div>
+  </div>
