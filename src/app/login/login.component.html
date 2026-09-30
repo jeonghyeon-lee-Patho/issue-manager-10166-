@@ -49,7 +49,7 @@
 			<!-- アクションボタン -->
 			<button class="btn-primary" (click)="handleAuth()" [disabled]="isLoading">
 				<span *ngIf="!isLoading">
-					{{ isSignUp ? '無料でアカウント登録' : 'ログイン' }}
+					{{ isSignUp ? '登録して始める' : 'ログイン' }}
 				</span>
 
 				<span *ngIf="isLoading" class="btn-spinner-wrapper">

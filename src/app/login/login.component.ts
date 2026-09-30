@@ -94,7 +94,7 @@ export class LoginComponent implements OnInit {
       const credential = await signInWithEmailAndPassword(this.auth, this.email.trim(), this.password);
       await sendEmailVerification(credential.user);
       await signOut(this.auth);
-      
+
       alert('確認メールを再送信しました。\nメールボックスおよび迷惑メールフォルダをご確認ください。');
       this.showResendLink = false;
     } catch (err: any) {
@@ -117,8 +117,12 @@ export class LoginComponent implements OnInit {
         return 'このメールアドレスは既に登録されています。\n届いた確認メール（迷惑メールフォルダ含む）のリンクをクリックするか、ログインをお試しください。';
       case 'auth/weak-password':
         return 'パスワードは6文字以上で入力してください。';
+      case 'auth/too-many-requests':
+        return '短時間に多数のリクエストが行われました。少し時間（1〜2分）を置いてから再度お試しください。';
+      case 'auth/network-request-failed':
+        return '通信エラーが発生しました。ネットワーク接続をご確認ください。';
       default:
-        return '認証に失敗しました。入力内容を確認してください。';
+        return `認証エラーが発生しました (${code})。入力内容をご確認ください。`;
     }
   }
 

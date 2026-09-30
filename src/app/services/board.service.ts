@@ -47,6 +47,31 @@ export class BoardService {
   private auth = inject(Auth);
   private ngZone = inject(NgZone);
 
+  /**
+   * ユーザーのボード順序を取得（ユーザー固有の順序）
+   */
+  async getUserBoardOrder(userId: string): Promise<string[]> {
+    const orderRef = doc(this.firestore, `users/${userId}/boardOrder/order`);
+    const { getDoc } = await import('@angular/fire/firestore');
+    const snap = await getDoc(orderRef);
+    
+    if (snap.exists()) {
+      return snap.data()['boardIds'] || [];
+    }
+    return [];
+  }
+
+  /**
+   * ボード順序を保存（ユーザー個別）
+   */
+  async saveBoardOrder(userId: string, boardIds: string[]): Promise<void> {
+    const orderRef = doc(this.firestore, `users/${userId}/boardOrder/order`);
+    await setDoc(orderRef, {
+      boardIds: boardIds,
+      updatedAt: Date.now()
+    });
+  }
+
   // BoardService 内への実装
   async updateMemberProfile(boardId: string, updatedMember: BoardMember): Promise<void> {
     const boardRef = doc(this.firestore, `boards/${boardId}`);
@@ -303,6 +328,33 @@ export class BoardService {
       members: arrayRemove(member),
       memberUids: arrayRemove(member.uid)  // memberUids からも削除
     });
+  }
+
+  /**
+   * ボード内のすべてのタスクから特定のユーザーを担当者から削除
+   */
+  async removeUserFromTaskAssignees(boardId: string, userDisplayName: string): Promise<void> {
+    const boardRef = doc(this.firestore, `boards/${boardId}`);
+    const { getDoc } = await import('@angular/fire/firestore');
+    const boardSnap = await getDoc(boardRef);
+
+    if (!boardSnap.exists()) throw new Error('ボードが見つかりません');
+
+    const tasks = (boardSnap.data()['tasks'] || []) as any[];
+    
+    // 全タスクから該当ユーザーを assignees から除去
+    const updatedTasks = tasks.map(task => {
+      if (task.assignees && Array.isArray(task.assignees)) {
+        return {
+          ...task,
+          assignees: task.assignees.filter((assignee: string) => assignee !== userDisplayName)
+        };
+      }
+      return task;
+    });
+
+    // 更新をFirestoreに保存
+    await updateDoc(boardRef, { tasks: updatedTasks });
   }
 
   /**

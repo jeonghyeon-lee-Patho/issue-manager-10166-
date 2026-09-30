@@ -91,6 +91,15 @@ export class BoardComponent implements OnInit, OnDestroy, OnChanges {
         this.ngZone.run(() => {
           if (docSnap.exists()) {
             const data = docSnap.data();
+            
+            // 【追加】ボードから追放されたかチェック
+            const currentUserUid = this.auth.currentUser?.uid;
+            if (currentUserUid && !data['memberUids']?.includes(currentUserUid)) {
+              alert('このボードから削除されています。');
+              this.router.navigate(['/']);
+              return;
+            }
+            
             this.boardName = data['name'] || this.boardId;
             this.columns = data['columns'] || ['To Do', 'In Progress', 'In Review', 'Done'];
             this.tasks = data['tasks'] || [];

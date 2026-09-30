@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { Auth, authState, User, signOut, updateProfile, user } from '@angular/fire/auth';
 import { Firestore, collection, query, where, doc, setDoc, onSnapshot, updateDoc, deleteDoc, getDoc } from '@angular/fire/firestore';
 import { BoardService, BoardInvitation } from '../services/board.service';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 @Component({
   selector: 'app-home',
@@ -20,7 +21,7 @@ export class HomeComponent implements OnInit {
 
   showModal = false;
   modalStep: 1 | 2 = 1;
- 
+
   newBoardName = '';
   newBoardId = '';
   userName = '';
@@ -43,12 +44,14 @@ export class HomeComponent implements OnInit {
   private destroyRef = inject(DestroyRef);
 
   ngOnInit() {
-    authState(this.auth).subscribe(user => {
+    authState(this.auth).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(async user => {
       if (!user) {
         this.router.navigate(['/login']);
       } else {
         this.currentUser = user;
-        
+
         const boardsRef = collection(this.firestore, 'boards');
         const ownedQuery = query(boardsRef, where('ownerId', '==', user.uid));
         const joinedQuery = query(boardsRef, where('memberUids', 'array-contains', user.uid));
@@ -56,13 +59,32 @@ export class HomeComponent implements OnInit {
         const ownedMap = new Map<string, any>();
         const joinedMap = new Map<string, any>();
 
-        // 【修正1】両方のボード情報をマージし、order 順に並び替えて反映する関数
-        const updateAllBoards = () => {
+        // 【修正1】両方のボード情報をマージし、ユーザー個別の順序で並び替えて反映する関数
+        const updateAllBoards = async () => {
           const mergedMap = new Map([...ownedMap, ...joinedMap]);
-          const boards = Array.from(mergedMap.values());
+          let boards = Array.from(mergedMap.values());
 
-          // orderプロパティで昇順ソート（未設定の既存データは 0 扱い）
-          boards.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+          // ユーザー個別の順序を取得
+          let userBoardOrder: string[] = [];
+          try {
+            userBoardOrder = await this.boardService.getUserBoardOrder(user.uid);
+          } catch (error) {
+            console.log('ボード順序の取得に失敗（初回の可能性あり）:', error);
+          }
+
+          // ユーザー順序に基づいてソート
+          if (userBoardOrder.length > 0) {
+            boards.sort((a, b) => {
+              const indexA = userBoardOrder.indexOf(a.id);
+              const indexB = userBoardOrder.indexOf(b.id);
+
+              // リストにあるものを先に、ない場合は末尾に追加
+              if (indexA === -1 && indexB === -1) return 0;
+              if (indexA === -1) return 1;
+              if (indexB === -1) return -1;
+              return indexA - indexB;
+            });
+          }
 
           this.allBoards = boards;
           this.cdr.detectChanges();
@@ -100,7 +122,7 @@ export class HomeComponent implements OnInit {
             },
             error => console.error("招待取得エラー:", error)
           );
-          
+
           this.destroyRef.onDestroy(() => unsubscribeInvitations.unsubscribe?.());
         }
       }
@@ -145,7 +167,7 @@ export class HomeComponent implements OnInit {
 
     // メールアドレスから＠前の部分を取得
     const emailPrefix = this.currentUser.email?.split('@')[0] || 'User';
-    
+
     // ユーザー入力がある場合はそれを使用、ない場合はメールアドレスのプレフィックス
     const displayName = this.userName.trim() || emailPrefix;
 
@@ -177,12 +199,13 @@ export class HomeComponent implements OnInit {
       userName: displayName,
       createdAt: Date.now(),
       order: this.allBoards.length,
-      columns: this.columns, 
+      columns: this.columns,
       tasks: [],
       members: [
         {
           uid: this.currentUser.uid,
-          displayName: this.currentUser.displayName || 'User',
+          //displayName: this.currentUser.displayName || 'User',
+          displayName: displayName,
           email: this.currentUser.email || '',
           photoURL: this.currentUser.photoURL || '',
           role: 'admin',
@@ -191,11 +214,11 @@ export class HomeComponent implements OnInit {
       ],
       memberUids: [this.currentUser.uid]
     }, { merge: true });
- 
+
     this.closeModal();
     this.router.navigate(['/board', customId]);
   }
- 
+
   closeModal() {
     this.showModal = false;
     this.newBoardName = '';
@@ -263,7 +286,7 @@ export class HomeComponent implements OnInit {
       const members = (boardData['members'] || []) as any[];
 
       let updatedMembers = members.filter(m => m.uid !== this.currentUser?.uid);
-      
+
       if (updatedMembers.length === 0) {
         await deleteDoc(boardRef);
         alert('ボードを削除しました');
@@ -314,7 +337,7 @@ export class HomeComponent implements OnInit {
     }
   }
 
-  // 【修正3】ドロップ時に全ボードへ順序番号 (order) を割り振って Firestore に一括保存
+  // ドロップ時にユーザー個別の順序番号を Firestore に保存
   async onBoardDrop(event: DragEvent, targetBoard: any) {
     event.preventDefault();
     if (!this.draggedBoard || this.draggedBoard.id === targetBoard.id) return;
@@ -327,22 +350,16 @@ export class HomeComponent implements OnInit {
       const [movedBoard] = this.allBoards.splice(draggedIndex, 1);
       this.allBoards.splice(targetIndex, 0, movedBoard);
 
-      // 2. 新しいインデックスで order を付与
-      this.allBoards.forEach((board, index) => {
-        board.order = index;
-      });
-
       this.cdr.detectChanges();
 
-      // 3. Firestore に一括更新
+      // 2. ユーザー個別の順序を Firestore に保存（共有ボードの order フィールドは変更しない）
       try {
-        const updatePromises = this.allBoards.map(board => {
-          const boardRef = doc(this.firestore, `boards/${board.id}`);
-          return updateDoc(boardRef, { order: board.order });
-        });
-        await Promise.all(updatePromises);
+        if (this.currentUser) {
+          const boardIds = this.allBoards.map(b => b.id);
+          await this.boardService.saveBoardOrder(this.currentUser.uid, boardIds);
+        }
       } catch (error) {
-        console.error('並び順の更新に失敗しました:', error);
+        console.error('ユーザー順序の更新に失敗しました:', error);
       }
     }
 
@@ -357,13 +374,13 @@ export class HomeComponent implements OnInit {
     this.editingBoardId = board.id;
     this.editingBoardNameValue = board.name;
     this.cdr.detectChanges();
-    
+
     setTimeout(() => {
       const input = document.querySelector(`input[data-board-id="${board.id}"]`) as HTMLInputElement;
       if (input) {
         input.focus();
         input.select();
-      } 
+      }
     }, 0);
   }
 
@@ -374,23 +391,24 @@ export class HomeComponent implements OnInit {
       return;
     }
 
-    if (!this.editingBoardNameValue.trim() || this.editingBoardNameValue === board.name) {
+    const newName = this.editingBoardNameValue.trim();
+    if (!newName || newName === board.name) {
       this.editingBoardId = null;
       return;
     }
 
+    board.name = newName;
+    this.editingBoardId = null;
+    this.cdr.detectChanges();
+
     try {
       const boardRef = doc(this.firestore, `boards/${board.id}`);
       await updateDoc(boardRef, {
-        name: this.editingBoardNameValue.trim(),
+        name: newName,
         lastUpdatedAt: Date.now()
       });
-      this.editingBoardId = null;
-      this.cdr.detectChanges(); // ← 完了後のUI即時反映
     } catch (error: any) {
       alert('ボード名の更新に失敗しました: ' + (error.message || 'Unknown error'));
-      this.editingBoardId = null;
-      this.cdr.detectChanges();
     }
   }
 
@@ -406,7 +424,7 @@ export class HomeComponent implements OnInit {
     if (!this.currentUser || !board || !board.members || !Array.isArray(board.members)) {
       return false;
     }
-    
+
     const me = board.members.find((m: any) => m.uid === this.currentUser?.uid);
     return me?.role === 'admin';
   }

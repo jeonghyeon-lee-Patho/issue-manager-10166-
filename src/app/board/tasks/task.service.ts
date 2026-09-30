@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Firestore, doc, setDoc } from '@angular/fire/firestore';
 import { WikiSection } from '../wiki/wiki.component';
+import { DEFAULT_TEMPLATES } from '../wiki/wiki-templates';
 
 export interface Subtask {
   id: string;
@@ -155,7 +156,19 @@ export class TaskService {
     if (!boardSnap.exists()) throw new Error('対象のボードが見つかりません');
 
     const boardData = boardSnap.data();
-    const wikiSections: WikiSection[] = boardData['wikiSections'] || [];
+    let wikiSections: WikiSection[] = boardData['wikiSections'] || [];
+    
+    // 既存セクションに DEFAULT_TEMPLATES が無い場合は追加
+    const existingIds = new Set(wikiSections.map(s => s.id));
+    if (!existingIds.has('vision')) {
+      wikiSections.unshift({ id: 'vision', ...DEFAULT_TEMPLATES['vision'] });
+    }
+    if (!existingIds.has('rules')) {
+      wikiSections.unshift({ id: 'rules', ...DEFAULT_TEMPLATES['rules'] });
+    }
+    if (!existingIds.has('links')) {
+      wikiSections.unshift({ id: 'links', ...DEFAULT_TEMPLATES['links'] });
+    }
 
     // --- 1. メタ情報の日本語フォーマット変換 ---
     const priorityLabel = task.priority
@@ -240,6 +253,7 @@ export class TaskService {
       content: formattedContent
     };
 
+    // templateを保護してから、新しいセクションを追加
     await updateDoc(boardRef, {
       wikiSections: [...wikiSections, newWikiSection],
       lastUpdatedAt: Date.now()

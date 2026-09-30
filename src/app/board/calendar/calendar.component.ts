@@ -216,7 +216,18 @@ export class CalendarComponent implements OnInit, OnChanges {
           t.id === updatedTask.id ? updatedTask : t
         );
 
-        await updateDoc(boardRef, { tasks: newTasks });
+        // タスクから undefined のフィールドを削除してからFirestoreに保存
+        const cleanedTasks = newTasks.map(task => {
+          const cleanedTask: any = { ...task };
+          Object.keys(cleanedTask).forEach(key => {
+            if (cleanedTask[key] === undefined) {
+              delete cleanedTask[key];
+            }
+          });
+          return cleanedTask;
+        });
+
+        await updateDoc(boardRef, { tasks: cleanedTasks });
 
         let customMsg = `タスク「${updatedTask.title}」の内容がカレンダーから更新されました`;
         if (oldStatus && oldStatus !== updatedTask.status) {
@@ -226,11 +237,15 @@ export class CalendarComponent implements OnInit, OnChanges {
         await this.sendTaskNotification(updatedTask, 'update', customMsg, oldAssignees);
 
         this.closeTaskEdit(); // 保存後に閉じる
+      } else {
+        console.warn('ボードが見つかりません:', this.boardId);
+        alert('ボード情報が見つかりません');
+        return;
       }
       this.cdr.detectChanges();
     } catch (err) {
-      console.error('Task Update Error:', err);
-      alert('保存に失敗しました');
+      console.error('Calendar Task Update Error:', err);
+      alert('保存に失敗しました: ' + (err instanceof Error ? err.message : '不明なエラー'));
     }
   }
 
