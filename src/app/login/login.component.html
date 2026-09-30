@@ -1,0 +1,67 @@
+<div class="login-wrapper">
+	<div class="login-container">
+		<!-- アプリロゴ & ブランドエリア -->
+		<div class="brand-header">
+			<div class="brand-icon">📋</div>
+			<h1 class="brand-title">issuemaker</h1>
+			<p class="brand-subtitle">チームの課題を、シンプルに可視化</p>
+		</div>
+
+		<!-- メインカード -->
+		<div class="login-card">
+			<h2 class="card-title">{{ isSignUp ? 'アカウント新規作成' : 'ログイン' }}</h2>
+
+			<!-- メールアドレス -->
+			<div class="form-group">
+				<label>メールアドレス</label>
+				<div class="input-wrapper">
+					<input type="email" [(ngModel)]="email" placeholder="example@email.com" />
+				</div>
+			</div>
+
+			<!-- パスワード -->
+			<div class="form-group">
+				<label>パスワード (6文字以上)</label>
+				<div class="input-wrapper password-wrapper">
+					<input [type]="showPassword ? 'text' : 'password'" [(ngModel)]="password" placeholder="••••••••"
+						(keyup.enter)="handleAuth()" />
+					<button type="button" class="btn-toggle-pass" (click)="showPassword = !showPassword" tabindex="-1">
+						{{ showPassword ? '🕶️' : '👁️' }}
+					</button>
+				</div>
+			</div>
+
+			<!-- パスワードリセットリンク（ログイン時のみ） -->
+			<div *ngIf="!isSignUp" class="link-right">
+				<span class="sub-link" (click)="resetPassword()">パスワードをお忘れの方</span>
+			</div>
+
+			<!-- エラーメッセージ -->
+			<div *ngIf="authError" class="error-msg-box">
+				⚠️ {{ authError }}
+			</div>
+
+			<!-- 確認メール再送リンク -->
+			<div *ngIf="showResendLink" class="resend-msg-box" (click)="resendVerificationEmail()">
+				✉️ 確認メールが届かない・再送する場合はこちら
+			</div>
+
+			<!-- アクションボタン -->
+			<button class="btn-primary" (click)="handleAuth()" [disabled]="isLoading">
+				<span *ngIf="!isLoading">
+					{{ isSignUp ? '無料でアカウント登録' : 'ログイン' }}
+				</span>
+
+				<span *ngIf="isLoading" class="btn-spinner-wrapper">
+					<span class="spinner"></span> 処理中...
+				</span>
+			</button>
+
+			<!-- モード切り替え footer -->
+			<div class="card-footer">
+				<p class="toggle-text" (click)="isSignUp = !isSignUp; authError = ''; showResendLink = false">
+					{{ isSignUp ? 'すでにアカウントをお持ちの方（ログイン）' : '新規アカウント作成はこちら' }}
+				</p>
+			</div>
+		</div>
+	</div>

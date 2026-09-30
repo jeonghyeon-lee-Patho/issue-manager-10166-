@@ -1,28 +1,164 @@
-<div class="home-container">
-    <h2>Issue Manager</h2>
-  
-    <!-- 選択肢 1: 新規作成 -->
-    <div class="card">
-      <h3>① 新しいボードを発行する</h3>
-      <p class="description">まっさらな新しいボードを作成してアクセスします。</p>
-      <button class="btn-primary" (click)="createRandomBoard()">
-        新規ボードを作成
-      </button>
+<div class="home-container" *ngIf="currentUser">
+  <header class="header">
+    <h2>マイボード一覧</h2>
+    <div>
+      <span class="email-text">{{ currentUser.email }}</span>
+      <button class="btn-create" (click)="showModal = true">＋ 新規ボード作成</button>
+      <button class="btn-logout" (click)="logout()">ログアウト</button>
     </div>
-  
-    <!-- 選択肢 2: 既存接続 -->
-    <div class="card">
-      <h3>② 既存のボードに接続する</h3>
-      <p class="description">ボードIDを入力して直接アクセスします。</p>
-      <div class="input-group">
-        <input 
-          [(ngModel)]="targetBoardId" 
-          placeholder="ボードID (例: dev-team)" 
-          (keyup.enter)="joinBoard()"
-        />
-        <button class="btn-primary" (click)="joinBoard()">
-          接続
-        </button>
+  </header>
+
+  <!-- 招待待ちボード（pending） -->
+  <div *ngIf="pendingBoards && pendingBoards.length > 0" class="pending-section">
+    <h3 class="section-title">📨 招待待ちボード</h3>
+    <div class="pending-boards-list">
+      <div *ngFor="let invitation of pendingBoards" class="pending-board-card">
+        <h4>{{ invitation.boardName }}</h4>
+        <p class="invitation-info">招待者: {{ invitation.invitedBy }}</p>
+        <div class="invitation-actions">
+          <button class="btn-accept" (click)="joinBoard(invitation)">参加する</button>
+          <button class="btn-reject" (click)="rejectInvitation(invitation)">却下</button>
+        </div>
       </div>
     </div>
   </div>
+
+  <!-- 自分が所有するボード -->
+  <div class="owned-section">
+    <h3 class="section-title">👥 マイボード</h3>
+    <div class="board-grid">
+      <div *ngFor="let board of allBoards; trackBy: trackByBoardId" class="board-card"
+           [draggable]="editingBoardId !== board.id"
+           (dragstart)="onBoardDragStart($event, board)"
+           (dragend)="onBoardDragEnd($event)"
+           (dragover)="onBoardDragOver($event)"
+           (drop)="onBoardDrop($event, board)"
+           [class.dragging]="draggedBoard?.id === board.id">
+        <div class="board-card-content" (click)="goToBoard(board.id)">
+          <!-- 左側 -->
+          <div class="board-card-left"> 
+            <!-- 左上：ボード名と作成者 -->
+            <div class="board-left-top">
+              <div class="editable-board-title">
+                <h3 *ngIf="!editingBoardId || editingBoardId !== board.id" 
+                    class="board-title" 
+                    [class.can-edit]="isBoardAdmin(board)"
+                    [title]="isBoardAdmin(board) ? 'クリックしてボード名を編集' : ''"
+                    (click)="startEditBoardName(board); $event.stopPropagation()">
+                  {{ board.name }}
+                </h3>
+                <div *ngIf="editingBoardId === board.id" (click)="$event.stopPropagation()">
+                <input 
+                  type="text"
+                  [(ngModel)]="editingBoardNameValue"
+                  maxlength="30"
+                  class="board-title-input"
+                  [attr.data-board-id]="board.id"
+                  (blur)="saveBoardName(board)"
+                  (keyup.enter)="saveBoardName(board)"
+                  (keyup.escape)="cancelEditBoardName()"
+                  (dragstart)="$event.stopPropagation()"
+                  (dragover)="$event.preventDefault()"
+                />
+                </div>
+              </div>
+              <p class="creator">作成者: {{ board.creatorName }}</p>
+            </div>
+            
+            <!-- 左下：URL -->
+            <span class="url-param">/board/{{ board.id }}</span>
+          </div>
+
+          <!-- 右側 -->
+          <div class="board-card-right">
+            <!-- 右下：統計情報 -->
+            <div class="board-card-stats">
+              <div class="stat-row">
+                <span class="stat-item">👥 {{ board.members?.length || 0 }}</span>
+                <span class="stat-item">📋 {{ board.tasks?.length || 0 }}</span>
+              </div>
+              <span class="stat-item stat-time">🕐 {{ (board.lastUpdatedAt || board.createdAt) | date: 'M/d HH:mm' }}</span>
+            </div> 
+          </div>
+        </div>
+        <button class="btn-delete-board" (click)="deleteBoard($event, board)" title="ボードを削除">
+          <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-9l-1 1H5v2h14V4z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <div *ngIf="allBoards.length === 0" class="empty-state">
+      まだボードがありません。新規作成してください。
+    </div>
+  </div>
+
+  <!-- 新規作成モーダル（2ステップ構成） -->
+  <div *ngIf="showModal" class="modal-overlay">
+    <div class="modal-content">
+      
+      <!-- STEP 1: 基本情報入力 -->
+      <div *ngIf="modalStep === 1">
+        <h3>新規ボード作成 (1/2) - 基本情報</h3>
+        
+        <div class="form-group">
+          <label>ボード名 *</label>
+          <input [(ngModel)]="newBoardName" maxlength="30" placeholder="例: 開発チームタスク (最大30文字)" />
+        </div>
+
+        <div class="form-group">
+          <label>URLパラメータ（省略時は自動生成）</label>
+          <input [(ngModel)]="newBoardId" maxlength="30" placeholder="例: dev-team (最大30文字)" />
+        </div>
+
+        <div class="form-group">
+          <label>このボードで使う自分の表示名</label>
+          <input [(ngModel)]="userName" maxlength="20" placeholder="例: 山田太郎 (最大20文字)" />
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn-secondary" (click)="closeModal()">キャンセル</button>
+          <button class="btn-primary" (click)="nextStep()">次へ（リスト設定） →</button>
+        </div>
+      </div>
+
+      <!-- STEP 2: リスト（カラム）設定 -->
+      <div *ngIf="modalStep === 2">
+        <h3>新規ボード作成 (2/2) - リスト設定</h3>
+        <p class="step-desc">課題を分類・管理するためのリストを整理します。</p>
+
+        <!-- 既存リストの縦並び表示 -->
+        <div class="column-vertical-list">
+          <div *ngFor="let col of columns; let i = index" class="column-item">
+            <span class="col-name">📋 {{ col }}</span>
+            <button class="btn-icon-delete" (click)="removeColumnSetting(i)" title="削除">✕</button>
+          </div>
+        </div>
+
+        <!-- リスト追加用ボタン＆トリガー入力欄 -->
+        <div class="add-column-section">
+          <button *ngIf="!showAddColumnInput" class="btn-add-trigger" (click)="toggleAddColumnInput()">
+            ＋ 新しいリストを追加
+          </button>
+
+          <div *ngIf="showAddColumnInput" class="add-column-box">
+            <input 
+              [(ngModel)]="newColumnInput" 
+              placeholder="リスト名 (例: レビュー待ち)" 
+              (keyup.enter)="addColumnSetting()" 
+              autofocus 
+            />
+            <button class="btn-small-primary" (click)="addColumnSetting()">追加</button>
+            <button class="btn-small-secondary" (click)="toggleAddColumnInput()">キャンセル</button>
+          </div>
+        </div> 
+ 
+        <div class="modal-actions">
+          <button class="btn-secondary" (click)="prevStep()">← 戻る</button>
+          <button class="btn-primary" (click)="createBoard()">ボードを作成して移動</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>

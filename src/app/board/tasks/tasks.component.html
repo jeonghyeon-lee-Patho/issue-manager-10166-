@@ -1,0 +1,220 @@
+<div class="tasks-wrapper">
+  <!-- 検索・フィルターバー -->
+  <div class="search-filter-bar">
+    <!-- 検索セクション -->
+    <div class="search-section">
+      <!-- 検索入力欄（常に表示） -->
+      <div class="search-input-wrapper" [class.expanded]="showSearchInput" [class.active]="showSearchInput">
+        <i class="fas fa-search"></i>
+        <input type="text" class="search-input" placeholder="検索..." [(ngModel)]="searchQuery"
+          (input)="onSearchChange($event)" (keyup.enter)="collapseSearchInput()" (mousedown)="expandSearchInput()"
+          (blur)="onSearchInputBlur()" [readonly]="!showSearchInput" #searchInputRef>
+      </div>
+    </div>
+
+    <!-- フィルターボタン -->
+    <div class="filter-button-section">
+      <button class="btn-filter-toggle" (click)="toggleFilterPanel()" [class.active]="showFilterPanel"
+        [class.filtered]="hasActiveFilters()" title="フィルター">
+        <i class="fas fa-sliders-h"></i>
+      </button>
+
+      <!-- フィルターパネル -->
+      <div *ngIf="showFilterPanel" class="filter-panel">
+        <!-- ステータスフィルター -->
+        <div class="filter-item">
+          <label>ステータス</label>
+          <div class="checkbox-group">
+            <label *ngFor="let col of columns" class="checkbox-label">
+              <input type="checkbox" [checked]="tempStatusFilter.includes(col)" (change)="toggleTempStatusFilter(col)">
+              {{ col }}
+            </label>
+          </div>
+          <!---->
+        </div>
+
+        <!-- 優先度フィルター -->
+        <div class="filter-item">
+          <label>優先度</label>
+          <div class="checkbox-group">
+            <label class="checkbox-label">
+              <input type="checkbox" [checked]="tempPriorityFilter.includes('high')"
+                (change)="toggleTempPriorityFilter('high')">
+              高
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [checked]="tempPriorityFilter.includes('medium')"
+                (change)="toggleTempPriorityFilter('medium')">
+              中
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [checked]="tempPriorityFilter.includes('low')"
+                (change)="toggleTempPriorityFilter('low')">
+              低
+            </label>
+          </div>
+        </div>
+
+        <!-- 担当者フィルター -->
+        <div class="filter-item">
+          <label>担当者</label>
+          <div class="checkbox-group">
+            <label *ngFor="let member of boardMembers" class="checkbox-label">
+              <input type="checkbox" [checked]="tempAssigneeFilter.includes(member)"
+                (change)="toggleTempAssigneeFilter(member)">
+              {{ member }}
+            </label>
+          </div>
+        </div>
+
+        <!-- 期限フィルター -->
+        <div class="filter-item">
+          <label>期限</label>
+          <select class="filter-select" [(ngModel)]="tempDueDateFilter" (change)="onDueDateFilterChange($event)">
+            <option value="">すべての期限</option>
+            <option value="overdue">期限超過</option>
+            <option value="today">今日</option>
+            <option value="this-week">今週</option>
+            <option value="this-month">今月</option>
+            <option value="no-due">期限なし</option>
+          </select>
+        </div>
+
+        <!-- ボタンセクション -->
+        <div class="filter-buttons">
+          <button class="btn-apply" (click)="applyFilters()">
+            ✓ 適用
+          </button>
+          <button class="btn-filter-reset" (click)="resetFilters()">
+            ✕ リセット
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sort-button-section">
+      <button class="btn-sort-toggle" (click)="toggleSortPanel()" [class.active]="showSortPanel"
+        [class.sorted]="sortKey !== 'none'" title="並び替え">
+        <i class="fas fa-sort"></i>
+      </button>
+  
+      <!-- ソートパネル -->
+      <div *ngIf="showSortPanel" class="sort-panel">
+        <div class="filter-item">
+          <label>並び替え基準</label>
+          <div class="sort-options">
+            <button class="sort-option-btn" [class.active]="tempSortKey === 'title'" (click)="tempSortKey = 'title'">
+              課題名
+            </button>
+            <button class="sort-option-btn" [class.active]="tempSortKey === 'priority'" (click)="tempSortKey = 'priority'">
+              優先度
+            </button>
+            <button class="sort-option-btn" [class.active]="tempSortKey === 'dueDate'" (click)="tempSortKey = 'dueDate'">
+              期限
+            </button>
+          </div>
+        </div>
+  
+        <!-- 順序切替（基準が選択されている場合のみ表示） -->
+        <div class="filter-item" *ngIf="tempSortKey !== 'none'">
+          <label>順序</label>
+          <div class="sort-order-toggle">
+            <button class="order-btn" [class.active]="tempSortOrder === 'asc'" (click)="tempSortOrder = 'asc'">
+              ↑ 昇順
+            </button>
+            <button class="order-btn" [class.active]="tempSortOrder === 'desc'" (click)="tempSortOrder = 'desc'">
+              ↓ 降順
+            </button>
+          </div>
+        </div>
+   
+        <!-- リセットボタン -->
+        <div class="filter-buttons">
+          <button class="btn-apply" (click)="applySort()">
+            ✓ 適用
+          </button>
+          <button class="btn-filter-reset" (click)="resetSort()">
+            ✕ リセット
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="kanban-board">
+    <div *ngFor="let col of getVisibleColumns(); let i = index" class="kanban-column"
+      (dragover)="onDragOver($event)"
+      (drop)="onColumnDrop($event, i); onDrop($event, col)" [class.drag-over]="draggedTask !== null"
+      [class.dragging-column]="draggedColumnIndex === i" [attr.data-column-index]="i">
+ 
+      <!-- 列ヘッダー -->
+      <div class="column-header"
+        [draggable]="editingColumnName !== col" 
+        (dragstart)="editingColumnName !== col && onColumnDragStart($event, i)"
+        (dragend)="onColumnDragEnd($event)" >
+        <div class="column-title-section">
+          <!-- 通常表示 -->
+          <div *ngIf="editingColumnName !== col" class="column-title-display" (click)="startEditColumnName(col)">
+            <h3>{{ col }}</h3>
+            <span class="task-count">({{ getTasksByColumn(col).length }})</span>
+          </div>
+          <!-- 編集モード -->
+          <div *ngIf="editingColumnName === col" class="column-title-edit">
+            <input type="text" [(ngModel)]="editingColumnNewName" maxlength="20" class="column-name-input"
+              (keyup.enter)="saveColumnName(col)" (keyup.escape)="cancelEditColumnName()"
+              (click)="$event.stopPropagation()" autofocus />
+            <span class="task-count">({{ getTasksByColumn(col).length }})</span>
+          </div>
+        </div>
+        <div class="column-actions">
+          <button *ngIf="editingColumnName === col" class="btn-edit-confirm"
+            (click)="saveColumnName(col); $event.stopPropagation()" title="保存">✓</button>
+          <button *ngIf="editingColumnName === col" class="btn-edit-cancel"
+            (click)="cancelEditColumnName(); $event.stopPropagation()" title="キャンセル">✕</button>
+          <button *ngIf="editingColumnName !== col" class="btn-delete-column" (click)="deleteColumn(col)"
+            title="リストを削除">×</button>
+        </div>
+      </div>
+
+      <!-- 課題カード一覧 -->
+      <div class="task-list">
+        <app-task-card *ngFor="let task of getTasksByColumn(col); trackBy: trackByTaskId" [task]="task"
+          [currentUserName]="currentUserName"
+          [boardMembers]="boardMembers"
+          [isDragging]="draggedTask?.id === task.id" (editTask)="openEditModal($event)"
+          (deleteClick)="deleteTask($event)" (updateTaskTitle)="updateTaskTitle($event)"
+          (updateTask)="saveTaskUpdate($event)" (dragStart)="onCardDragStart($event)" (dragEnd)="onCardDragEnd()">
+        </app-task-card>
+      </div>
+
+      <!-- 課題入力フォーム（トグル式） -->
+      <div class="add-task-section">
+        <button class="btn-add-task-toggle" (click)="openCreateModal(col)">
+          ＋ 課題を追加
+        </button>
+      </div>
+    </div>
+
+    <!-- リスト追加セクション -->
+    <div class="add-column-section">
+      <button *ngIf="!showAddColumnInput" class="btn-add-column-toggle" (click)="showAddColumnInput = true">
+        ＋ リストを追加
+      </button>
+      <div *ngIf="showAddColumnInput" class="add-column-box">
+        <input [(ngModel)]="newColumnName" maxlength="20" placeholder="リスト名を入力 (最大20文字)..." (keyup.enter)="addColumn()" autofocus
+          class="column-input" />
+        <div class="column-input-actions">
+          <button class="btn-add-confirm" (click)="addColumn()" title="リストを追加">追加</button>
+          <button class="btn-add-cancel" (click)="showAddColumnInput = false; newColumnName = ''"
+            title="キャンセル">キャンセル</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- タスク編集・作成モーダル -->
+<app-task-edit-modal [isOpen]="isEditModalOpen" [boardId]="boardId" [task]="editingTask" [columns]="columns"
+  [defaultColumn]="defaultCreateColumn" [currentUserName]="currentUserName" [boardMembers]="boardMembers"
+  (save)="saveTaskEdit($event)" (close)="closeEditModal()">
+</app-task-edit-modal>

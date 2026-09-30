@@ -1,0 +1,115 @@
+<div class="wiki-layout">
+  <!-- 左側：項目ナビゲーション（サイドバー） -->
+  <div class="wiki-sidebar">
+    <div class="sidebar-header clickable" (click)="selectSection('all')" [class.active]="activeSectionId === 'all'">
+      <h3>📖 チームWiki</h3>
+      <!-- ボタンクリック時は親要素の(click)を防ぐ -->
+      <button class="btn-add-section" (click)="addSection(); $event.stopPropagation()" title="新しい項目を追加">+ 追加</button>
+    </div>
+
+    <div class="section-list">
+      <div 
+        *ngFor="let section of sections; let i = index" 
+        class="section-item"
+        [class.active]="section.id === activeSectionId"
+        [class.dragging]="i === draggedIndex"
+        [class.drag-over]="i === dragOverIndex"
+        [draggable]="true"
+        (dragstart)="onDragStart(i)"
+        (dragover)="onDragOver($event, i)"
+        (dragleave)="onDragLeave()"
+        (drop)="onDrop(i)"
+        (dragend)="onDragEnd()"
+        (click)="selectSection(section.id)"
+      > 
+        <span class="section-icon">{{ section.icon }}</span>
+        <span class="section-title">{{ section.title }}</span>
+        <button class="btn-delete-section" (click)="deleteSection(section.id, $event); $event.stopPropagation()" title="削除">×</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 右側：本文 ＆ 編集エリア -->
+  <div class="wiki-content-area" *ngIf="activeSectionId === 'all'">
+    <div class="content-header">
+      <div class="header-info">
+        <h2>📖 すべての項目</h2>
+      </div>
+    </div>
+
+    <div class="wiki-view all-sections-view">
+      <!-- 全てのセクションを順番に表示 -->
+      <div *ngFor="let section of sections" class="section-block">
+        <div class="section-block-header">
+          <h3>{{ section.icon }} {{ section.title }}</h3>
+          <button class="btn-secondary btn-small" (click)="editSpecificSection(section.id)">✏️ 編集</button>
+        </div>
+        <div class="rendered-text">{{ section.content || '📝 内容がありません。' }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="wiki-content-area" *ngIf="activeSectionId !== 'all' && activeSection">
+    <!-- 上段ヘッダー -->
+    <div class="content-header">
+      <div class="header-info" *ngIf="!isEditing">
+        <h2>{{ activeSection.icon }} {{ activeSection.title }}</h2>
+      </div> 
+
+      <!-- 編集モード時のタイトル＆アイコン入力 -->
+      <div class="header-edit-inputs" *ngIf="isEditing">
+        <input type="text" [(ngModel)]="editingIcon" class="input-icon" maxlength="2" placeholder="アイコン">
+        <input type="text" [(ngModel)]="editingTitle" class="input-title" maxlength="50" placeholder="項目タイトル (最大50文字)">
+      </div>
+
+      <div class="header-actions">
+        <button *ngIf="!isEditing" class="btn-secondary btn-small" (click)="startEdit()">✏️ 編集</button>
+
+        <ng-container *ngIf="isEditing">
+          <button class="btn-secondary" (click)="cancelEdit()" [disabled]="isSaving">キャンセル</button>
+          <button class="btn-primary" (click)="saveWiki()" [disabled]="isSaving">
+            {{ isSaving ? '保存中...' : '保存' }}
+          </button>
+        </ng-container>
+      </div>
+    </div>
+
+    <!-- 編集モード時のツールバー（アイコン ＆ テンプレート） -->
+    <div class="edit-tools-bar" *ngIf="isEditing">
+
+      <!-- アイコン選択 -->
+      <div class="tool-group icon-group">
+        <span class="tool-label">アイコン:</span>
+        <button *ngFor="let icon of presetIcons" class="btn-icon-preset" (click)="selectIcon(icon)" title="アイコンを選択">
+          {{ icon }}
+        </button>
+      </div>
+
+      <!-- テンプレート選択 -->
+      <div class="tool-group template-group">
+        <span class="tool-label">テンプレート:</span>
+        <button class="btn-template" (click)="applyTemplate('vision')">🎯 ゴール・ビジョン</button>
+        <button class="btn-template" (click)="applyTemplate('rules')">📋 運用ルール</button>
+        <button class="btn-template" (click)="applyTemplate('links')">🔗 リンク集</button>
+      </div>
+
+    </div>
+
+    <!-- 本文表示エリア（閲覧モード） -->
+    <div *ngIf="!isEditing" class="wiki-view">
+      <div *ngIf="activeSection.content; else emptySection" class="rendered-text">
+        {{ activeSection.content }}
+      </div>
+      <ng-template #emptySection>
+        <div class="empty-state" (click)="startEdit()">
+          <p>📝 内容がありません。クリックして記入を開始してください。</p>
+        </div>
+      </ng-template>
+    </div>
+
+    <!-- 本文入力エリア（編集モード） -->
+    <div *ngIf="isEditing" class="wiki-edit">
+      <textarea [(ngModel)]="editingContent" maxlength="5000" class="wiki-textarea" placeholder="ここに内容を入力してください (最大5,000文字)..."></textarea>
+    </div>
+  </div>
+</div>

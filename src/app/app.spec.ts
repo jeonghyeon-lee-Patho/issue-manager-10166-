@@ -22,3 +22,4 @@ describe('App', () => {
     expect(compiled.querySelector('h1')?.textContent).toContain('Hello, issueManager');
   });
 });
+ 

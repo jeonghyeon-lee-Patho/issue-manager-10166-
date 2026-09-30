@@ -1,24 +1,108 @@
 <div class="board-container">
-    <a routerLink="/" class="back-link">← トップに戻る</a>
-  
-    <h1>ボードID: <span class="highlight">{{ boardId }}</span></h1>
-    <p class="url-info">
-      現在のURL: <code>{{ currentUrl }}</code>
-    </p>
-  
-    <hr>
-  
-    <div class="form-group">
-      <input 
-        [(ngModel)]="newTaskTitle" 
-        placeholder="新しい課題を入力..." 
-        (keyup.enter)="add()"
-      />
-      <button (click)="add()">課題を追加</button>
+  <!-- ヘッダーバー -->
+  <div class="board-top-bar">
+    <div class="bar-left">
+      <h1 class="app-title">IssueManager</h1>
+      <span class="divider">|</span>
+      <!-- ボード名（クリックで編集） -->
+      <div class="editable-board-name">
+        <h2 *ngIf="!isEditingBoardName" class="board-name" [class.can-edit]="isAdmin"
+          [title]="isAdmin ? 'クリックしてボード名を編集' : ''" (click)="startEditBoardName()">{{ boardName || boardId }}
+        </h2>
+        <input *ngIf="isEditingBoardName" #boardInput type="text" [(ngModel)]="editingBoardName"
+          maxlength="30" class="board-name-input" autofocus (blur)="saveBoardName()" (keyup.enter)="saveBoardName()"
+          (keyup.escape)="cancelEditBoardName()" />
+      </div>
     </div>
-  
-    <h3>課題一覧</h3>
-    <ul>
-      <li *ngFor="let t of tasks">{{ t }}</li>
-    </ul>
+    <div class="bar-right">
+      <div class="notification-wrapper">
+        <button class="btn-notification" (click)="toggleNotifications()" title="通知">
+          🔔
+          <span *ngIf="unreadCount > 0" class="notification-badge">{{ unreadCount }}</span>
+        </button>
+ 
+        <div class="notification-dropdown" *ngIf="showNotifications">
+          <div class="notification-header">
+            <h4>お知らせ</h4>
+            <div class="header-actions">
+              <button class="btn-text-small" (click)="markAllAsRead()" *ngIf="unreadCount > 0">すべて既読</button>
+              <button class="btn-text-small btn-danger-text" (click)="deleteAllNotifications()"
+                *ngIf="notifications.length > 0">すべて削除</button>
+            </div>
+          </div>
+
+          <div class="notification-list">
+            <div *ngFor="let notice of notifications" class="notification-item" [class.unread]="!notice.read"
+              (click)="markAsRead(notice)">
+              <div class="notice-icon">
+                {{ notice.type === 'task' ? '📋' : '👥' }}
+              </div>
+              <div class="notice-content">
+                <div class="notice-title">{{ notice.title }}</div>
+                <div class="notice-message">{{ notice.message }}</div>
+                <div class="notice-time">{{ notice.createdAt | date:'MM/dd HH:mm' }}</div>
+              </div>
+
+              <button class="btn-delete-notice" (click)="deleteNotification($event, notice)" title="削除">
+                ×
+              </button>
+            </div>
+
+            <div *ngIf="notifications.length === 0" class="empty-notifications">
+              お知らせはありません
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="user-profile-group">
+        <div class="profile-image-wrapper">
+          <img [src]="currentUserPhotoUrl" alt="Profile" class="profile-image" title="クリックして画像を変更"
+            (click)="fileInput.click()">
+          <button *ngIf="hasCustomPhoto" type="button" class="btn-reset-image" title="デフォルト画像に戻す"
+            (click)="resetProfileImage($event)">
+            ×
+          </button>
+        </div>
+        <!-- 隠しファイル入力 -->
+        <input #fileInput type="file" style="display: none;" accept="image/*" (change)="onFileSelected($event)">
+        <!-- ユーザー名（クリックで編集） -->
+        <div class="editable-user-name" (click)="startEditUserName()">
+          <span *ngIf="!isEditingUserName" class="user-name">{{ currentUserName }}</span>
+          <input *ngIf="isEditingUserName" type="text" [(ngModel)]="editingUserName" maxlength="20"
+            class="user-name-input" autofocus (blur)="saveUserName()" (keyup.enter)="saveUserName()" (keyup.escape)="cancelEditUserName()" />
+        </div>
+      </div>
+      <a routerLink="/home" class="back-link">← ホームに戻る</a>
+    </div>
   </div>
+
+  <!-- カテゴリー選択バー -->
+  <div class="category-bar">
+    <div class="category-buttons">
+      <button *ngFor="let cat of categories" class="category-btn" [class.active]="selectedCategory === cat"
+        (click)="selectCategory(cat)">
+        {{ categoryLabels[cat] }}
+      </button>
+    </div>
+  </div>
+
+  <!-- メインコンテンツ -->
+  <div class="board-content">
+    <!-- Tasks ビュー -->
+    <app-tasks *ngIf="selectedCategory === 'tasks'" [boardId]="boardId" [columns]="columns" [tasks]="tasks"
+      [currentUserName]="currentUserName" [boardMembers]="boardMembers"></app-tasks>
+
+    <!-- Calendar ビュー -->
+    <app-calendar *ngIf="selectedCategory === 'calendar'" [boardId]="boardId" [tasks]="tasks" [columns]="columns"
+      [boardMembers]="boardMembers" [currentUserName]="currentUserName">
+    </app-calendar>
+
+    <!-- Wiki ビュー -->
+    <app-wiki *ngIf="selectedCategory === 'wiki'" [boardId]="boardId" [wikiSections]="wikiSections"></app-wiki>
+
+    <!-- Members ビュー -->
+    <app-members *ngIf="selectedCategory === 'members'" [boardId]="boardId" [currentUserName]="currentUserName"
+      [isAdmin]="isAdmin"></app-members>
+  </div>
+</div>

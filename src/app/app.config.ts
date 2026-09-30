@@ -5,6 +5,7 @@ import { routes } from './app.routes';
 // Firebase用のインポート
 import { provideFirebaseApp, initializeApp } from '@angular/fire/app';
 import { provideFirestore, getFirestore } from '@angular/fire/firestore';
+import { provideAuth, getAuth } from '@angular/fire/auth';
 import { environment } from '../environments/environment';
 
 export const appConfig: ApplicationConfig = {
@@ -14,6 +15,8 @@ export const appConfig: ApplicationConfig = {
     
     // FirebaseとFirestoreを登録
     provideFirebaseApp(() => initializeApp(environment.firebase)),
-    provideFirestore(() => getFirestore())
+    provideFirestore(() => getFirestore()),
+    provideAuth(() => getAuth())
   ]
-};
+};  
+  

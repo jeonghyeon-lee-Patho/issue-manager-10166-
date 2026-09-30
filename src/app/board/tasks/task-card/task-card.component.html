@@ -1,0 +1,115 @@
+<div class="task-card" [draggable]="!isEditingTitle" (dragstart)="onDragStart($event)" (dragend)="onDragEnd($event)"
+  (click)="editTask.emit(task)" [class.dragging]="isDragging" [style.background-color]="getTaskColor(task)">
+
+  <div class="task-content">
+    <!-- 左側：タイトル -->
+    <div class="task-left">
+      <div class="task-header">
+        <!-- タイトル編集モード --> 
+        <div *ngIf="isEditingTitle" class="title-edit-mode" (click)="$event.stopPropagation()"
+          (mousedown)="$event.stopPropagation()">
+          <input type="text" 
+            [(ngModel)]="editingTitle" 
+            maxlength="100"
+            class="title-input" 
+            draggable="false"
+            (keyup.enter)="saveTitle()"
+            (keyup.escape)="cancelEditTitle($event)" 
+            (blur)="saveTitle()"
+            (mousedown)="$event.stopPropagation()" 
+            (dragstart)="$event.stopPropagation()"
+            (dragover)="$event.preventDefault()" />
+        </div>
+        <!-- 通常表示 --> 
+        <p *ngIf="!isEditingTitle" class="task-title" [title]="task.title">
+          {{ task.title }}
+        </p>
+        <!-- 編集アイコン（hover時） -->
+        <button *ngIf="!isEditingTitle" class="btn-edit-title" (click)="startEditTitle($event)"
+          title="タイトルを編集">✎</button>
+      </div>
+
+      <!-- ディスクリプション -->
+      <div *ngIf="task.description" class="task-description">
+        {{ task.description | slice:0:80 }}<span *ngIf="task.description.length > 80">...</span>
+      </div>
+
+      <!-- サブタスク数、コメント、担当者 -->
+      <div class="task-footer-info">
+        <button *ngIf="task.subtasks && task.subtasks.length > 0" class="subtasks-info"
+          [class.active]="showSubtasksDetail" (click)="toggleSubtasksDetail($event)" title="サブタスクを確認">
+          ✓ {{ taskService.getCompletedSubtasks(task) }} / {{ task.subtasks.length }}
+        </button>
+        <button *ngIf="task.comments && task.comments.length > 0" class="comments-info"
+          [class.active]="showCommentsDetail" (click)="toggleCommentsDetail($event)" title="コメントを確認">
+          💬 {{ task.comments.length }}
+        </button>
+        <button *ngIf="task.assignees && task.assignees.length > 0" class="assignees-info"
+          [class.active]="showAssigneesDetail" (click)="toggleAssigneesDetail($event)" title="担当者を確認">
+          👤 {{ task.assignees.length }}
+        </button>
+      </div>
+
+      <!-- サブタスク詳細 -->
+      <div *ngIf="showSubtasksDetail && task.subtasks && task.subtasks.length > 0" class="subtasks-detail">
+        <div *ngFor="let subtask of task.subtasks" class="subtask-detail-item">
+          <input type="checkbox" [checked]="subtask.completed" (change)="updateSubtask(subtask)"
+            (click)="$event.stopPropagation()" />
+          <span [class.completed]="subtask.completed">{{ subtask.title }}</span>
+        </div>
+      </div>
+
+      <!-- コメント詳細 -->
+      <div *ngIf="showCommentsDetail && task.comments && task.comments.length > 0" class="comments-detail">
+        <div *ngFor="let comment of task.comments" class="comment-detail-item">
+          <div class="comment-detail-header">
+            <strong class="comment-author-name" [title]="comment.author || 'Anonymous'">
+              {{ comment.author || 'Anonymous' }}
+            </strong>
+
+            <div class="comment-datetime">
+              <span>{{ comment.createdAt | date:'yyyy/MM/dd' }}</span>
+              <span>{{ comment.createdAt | date:'HH:mm' }}</span>
+            </div>
+          </div>
+          <div class="comment-detail-text">{{ comment.text }}</div>
+        </div>
+      </div>
+
+      <!-- 担当者詳細 -->
+      <div *ngIf="showAssigneesDetail && task.assignees && task.assignees.length > 0" class="assignees-detail">
+        <div *ngFor="let assignee of task.assignees" class="assignee-detail-item">
+          <img [src]="getAssigneeAvatar(assignee)" [alt]="assignee" class="assignee-avatar-img">
+          <span class="assignee-name">{{ assignee }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 右側：削除ボタンとバッジ -->
+    <div class="task-right">
+      <button class="btn-delete-task" (click)="deleteClick.emit(task.id); $event.stopPropagation()"
+        title="課題を削除">×</button>
+
+      <!-- 優先度と期限（削除ボタン下に縦配置） -->
+      <div class="task-badges">
+        <span *ngIf="task.priority" [class]="'priority-badge ' + taskService.getPriorityClass(task.priority)">
+          {{ task.priority }}
+        </span>
+        <div *ngIf="getDueDateLabel(task.dueDate)" class="due-date-label">
+          {{ getDueDateLabel(task.dueDate) }}
+        </div>
+
+        <div *ngIf="task.dueDate" class="due-date-row">
+          <i class="far fa-clock"></i>
+          <span class="due-date-text">{{ task.dueDate | date:'yyyy/MM/dd' }}</span>
+        </div>
+
+        <div *ngIf="task.tags && task.tags.length > 0" class="task-tags-container">
+          <span *ngFor="let tag of task.tags" class="task-tag-badge">
+            #{{ tag }}
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

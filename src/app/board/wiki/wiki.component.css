@@ -1,0 +1,406 @@
+.wiki-layout {
+  display: flex;
+  height: calc(100vh - 120px);
+  margin: 16px;
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  overflow: hidden;
+
+  min-width: 720px;
+  box-sizing: border-box;
+}
+
+/* --- サイドバー --- */
+.wiki-sidebar {
+  width: 260px;
+  background-color: #f8fafc;
+  border-right: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-header {
+  display: flex; 
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid #e2e8f0;
+  gap: 8px; /* 文字とボタンの衝突防止 */
+}
+
+.sidebar-header h3 {
+  margin: 0;
+  font-size: 15px;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis; /* 横幅が狭い時は省略記号...にする */
+  flex: 1;
+  min-width: 0;
+}
+
+.sidebar-header.clickable {
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.sidebar-header.clickable:hover {
+  background-color: #f1f5f9;
+}
+
+.sidebar-header.active {
+  background-color: #e0f2fe;
+}
+
+.sidebar-header.active h3 {
+  color: #0369a1;
+}
+
+.btn-add-section {
+  padding: 4px 8px;
+  background-color: #3498db;
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+
+  flex-shrink: 0;
+  white-space: nowrap;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.btn-add-section:hover {
+  background-color: #2980b9;
+}
+
+.section-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.section-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.15s;
+  min-width: 0;
+}
+
+.section-item:hover {
+  background-color: #f1f5f9;
+  color: #0f172a;
+}
+
+.section-item.active {
+  background-color: #e0f2fe;
+  color: #0369a1;
+  font-weight: 600;
+}
+
+.section-item[draggable="true"] {
+  cursor: grab;
+}
+
+.section-item[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+.section-item.dragging {
+  opacity: 0.4;
+  background-color: #e2e8f0;
+}
+
+.section-item.drag-over {
+  border-top: 3px solid #3498db;
+  background-color: #f0f9ff;
+}
+
+.section-title {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.btn-delete-section {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.section-item:hover .btn-delete-section {
+  opacity: 1;
+}
+
+.btn-delete-section:hover {
+  color: #ef4444;
+}
+
+/* --- 本文エリア --- */
+.wiki-content-area {
+  flex: 1;
+  min-width: 400px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.content-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  border-bottom: 1px solid #e2e8f0;
+  gap: 12px;
+}
+
+.content-header h2 {
+  margin: 0;
+  font-size: 20px;
+  color: #0f172a;
+  flex: 1;
+  min-width: 0;
+
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  line-height: 1.3;
+}
+
+.all-sections-view {
+  display: flex;
+  flex-direction: column;
+  gap: 32px; /* 各セクション間の広い余白 */
+  padding-bottom: 64px;
+}
+
+.section-block {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 24px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.section-block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+}
+
+.section-block-header h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #0f172a;
+  flex: 1;
+  min-width: 0;
+
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  line-height: 1.3;
+}
+
+/* 編集ボタン（小） */
+.btn-small {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+.header-edit-inputs {
+  display: flex;
+  gap: 8px;
+  margin-right: 8px;
+  flex: 1;
+  min-width: 220px;
+  max-width: 400px;
+}
+
+.input-icon {
+  width: 45px;
+  text-align: center;
+  padding: 6px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  font-size: 16px;
+}
+
+.input-title {
+  flex: 1;
+  min-width: 140px;
+  padding: 6px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.btn-primary, .btn-secondary {
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  margin-left: 12px;
+}
+
+.btn-primary { background-color: #3498db; color: white; }
+.btn-primary:hover { background-color: #2980b9; }
+
+.btn-secondary { background-color: #e2e8f0; color: #475569; }
+.btn-secondary:hover { background-color: #cbd5e1; }
+
+/* --- 編集ツールバー（アイコン＆テンプレート） --- */
+.edit-tools-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 24px 8px 24px;
+  background-color: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.tool-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap; /* 画面が狭い時に折り返す */
+  overflow-x: auto;
+}
+
+.icon-group {
+  gap: 2px;
+}
+
+.template-group {
+  gap: 8px;
+}
+
+.tool-label {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 600;
+  width: 80px; /* アイコンとテンプレートのラベル幅を揃えて綺麗に見せる */
+  flex-shrink: 0;
+}
+
+/* アイコン選択ボタン */
+.btn-icon-preset {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px 6px;
+  transition: all 0.2s;
+  gap: 4px;
+}
+
+.btn-icon-preset:hover {
+  background-color: #e2e8f0;
+  border-color: #cbd5e1;
+  transform: scale(1.1); /* ホバー時に少し大きくする */
+}
+
+/* テンプレートボタン（既存の.btn-templateを微調整） */
+.btn-template {
+  padding: 6px 10px 8px 10px;
+  background-color: white;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.btn-template:hover {
+  border-color: #3498db;
+  color: #3498db;
+  background-color: #f0f9ff;
+}
+
+
+/* 表示・編集ボディ */
+.wiki-view, .wiki-edit {
+  flex: 1;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.rendered-text {
+  font-size: 15px;
+  line-height: 1.8;
+  color: #334155;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+}
+
+.empty-state {
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed #e2e8f0;
+  border-radius: 8px;
+  color: #94a3b8;
+  cursor: pointer;
+}
+
+.wiki-textarea {
+  width: 100%;
+  height: 100%;
+  min-height: 300px;
+  max-height: 600px;
+  padding: 16px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 14px;
+  line-height: 1.6;
+  resize: vertical;
+  box-sizing: border-box;
+  outline: none;
+}
+
+.wiki-textarea:focus {
+  border-color: #3498db;
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.1);
+}
+
+
+

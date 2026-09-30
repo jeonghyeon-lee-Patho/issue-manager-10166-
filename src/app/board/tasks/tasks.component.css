@@ -1,0 +1,791 @@
+/* ================== タスクコンテナ ================== */
+.tasks-wrapper {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow: auto;
+}
+
+/* ================== 検索・フィルターバー ================== */
+.search-filter-bar {
+  display: flex;
+  gap: 12px;
+  padding: 0px 24px 0px 24px;
+  background-color: transparent;
+  border-bottom: none;
+  align-items: center;
+} 
+
+.search-section {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.search-input-wrapper {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  width: 100px;
+  height: 36px;
+  transition: width 0.3s ease;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  padding: 0 8px;
+  background-color: white;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.search-input-wrapper.expanded {
+  width: 220px;
+}
+
+.search-input-wrapper.active {
+  border-color: #3498db;
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.1);
+}
+
+.search-input-wrapper i {
+  color: #2c3e50d7;
+  font-size: 16px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.search-input {
+  flex: 1;
+  border: none;
+  padding: 0 4px;
+  font-size: 13px;
+  outline: none;
+  background-color: transparent;
+  color: #2c3e50;
+  min-width: 0;
+  width: 0;
+}
+
+.search-input::placeholder {
+  color: #bdc3c7;
+  opacity: 1;
+}
+
+.search-input:read-only {
+  cursor: text;
+}
+
+.search-input-wrapper.expanded .search-input {
+  width: 100%;
+}
+
+/* フィルターボタンセクション */
+.filter-button-section {
+  position: relative;
+}
+
+.btn-sort-toggle,
+.btn-filter-toggle {
+  padding: 4px 12px;
+  background-color: #95a5a6;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 36px;
+}
+
+.btn-sort-toggle:hover,
+.btn-filter-toggle:hover {
+  background-color: #7f8c8d;
+}
+
+.btn-filter-toggle.active {
+  background-color: #9b59b6;
+  color: white;
+}
+
+.btn-filter-toggle.filtered {
+  background-color: #9b59b6;
+  color: white;
+  box-shadow: 0 0 0 3px rgba(155, 89, 182, 0.2);
+}
+
+.btn-filter-toggle i {
+  font-size: 18px;
+}
+
+/* フィルターパネル */
+.sort-panel,
+.filter-panel {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background-color: white;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 16px;
+  z-index: 100;
+  min-width: 250px;
+  margin-top: 4px;
+  animation: slideDown 0.2s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.filter-item {
+  margin-bottom: 12px;
+}
+
+.filter-item:last-of-type {
+  margin-bottom: 16px;
+}
+
+.sort-item label, 
+.filter-item label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 6px;
+}
+
+.filter-select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  font-size: 13px;
+  background-color: white;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+  box-sizing: border-box;
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+/* チェックボックスグループ用コンテナ */
+.checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 120px; /* メンバーやステータスが多い場合のスクロール上限 */
+  overflow-y: auto;
+  padding: 8px 10px;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  background-color: #f8f9fa;
+  box-sizing: border-box;
+}
+
+/* スクロールバーのスタイル調整 */
+.checkbox-group::-webkit-scrollbar {
+  width: 6px;
+}
+
+.checkbox-group::-webkit-scrollbar-thumb {
+  background-color: #ccc;
+  border-radius: 3px;
+}
+
+/* チェックボックスラベル */
+.checkbox-label {
+  display: flex !important; /* 親要素の display: block を上書き */
+  align-items: center;
+  font-size: 13px !important;
+  font-weight: normal !important;
+  color: #333 !important;
+  margin-bottom: 0 !important;
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkbox-label {
+  display: flex !important; /* 親要素の display: block を上書き */
+  align-items: center;
+  font-size: 13px !important;
+  font-weight: normal !important;
+  color: #333 !important;
+  margin-bottom: 0 !important;
+  cursor: pointer;
+  user-select: none;
+}
+.checkbox-label:hover {
+  color: #3498db !important;
+}
+
+/* チェックボックス本体 */
+.checkbox-label input[type="checkbox"] {
+  margin: 1px 8px 0 0;
+  cursor: pointer;
+  accent-color: #3498db; /* チェック時のテーマカラー */
+}
+/*////*/
+
+
+/* フィルターボタンセクション */
+.filter-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+} 
+
+.btn-apply {
+  flex: 1;
+  padding: 8px 12px;
+  background-color: #27ae60;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+.btn-apply:hover {
+  background-color: #229954;
+}
+
+.btn-filter-reset {
+  flex: 1;
+  padding: 8px 12px;
+  background-color: #e74c3c;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+.btn-filter-reset:hover {
+  background-color: #c0392b;
+}
+
+/* ソートセクション */
+.sort-button-section {
+  position: relative;
+}
+
+.btn-sort-toggle.active {
+  background-color:#3498db;
+  color: white;
+}
+
+
+.btn-sort-toggle.sorted {
+  background-color: #3498db;
+  color: #ffffff;
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+}
+
+
+/* ボタン群 */
+.sort-options,
+.sort-order-toggle {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.sort-option-btn,
+.order-btn {
+  flex: 1;
+  padding: 6px 8px;
+  font-size: 13px;
+  font-weight: 450;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  background-color: #f8fafc;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sort-option-btn.active,
+.order-btn.active {
+  background-color: #2980b9;
+  color: #ffffff;
+  border-color: #2980b9;
+  font-weight: 600;
+}
+
+.sort-buttons {
+  border-top: 1px solid #f1f5f9;
+  padding-top: 8px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.btn-sort-reset {
+  background: transparent;
+  border: none;
+  color: #ef4444;
+  font-size: 11px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.btn-sort-reset:hover {
+  background-color: #fef2f2;
+}
+
+/* ================== カンバンボード ================== */
+.kanban-board {
+  display: flex;
+  gap: 20px;
+  overflow-x: scroll;
+  overflow-y: visible;
+  align-items: flex-start;
+  padding: 12px 24px 12px 24px;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.kanban-column {
+  flex: 0 0 300px;
+  max-width: 300px;
+  
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  max-height: 100%;
+  transition: all 0.2s ease;
+  cursor: grab;
+} 
+
+.kanban-column.drag-over {
+  background-color: #e8f4f8;
+  opacity: 0.8;
+}
+
+.kanban-column.dragging-column {
+  opacity: 0.5;
+  cursor: grabbing;
+  background-color: #d4e6f1;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+  transform: scale(0.98);
+}
+
+/* 列ヘッダー */
+.column-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #ecf0f1;
+  padding: 14px 16px;
+  border-bottom: 2px solid #bdc3c7;
+}
+
+.column-title-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  width: 200px;
+  max-width: 200px;
+}
+
+.column-title-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  flex: 1;
+  min-width: 0;
+  max-width: 100%;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.column-title-display:hover {
+  background-color: rgba(52, 152, 219, 0.1);
+}
+
+.column-title-display h3 {
+  max-width: 180px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+}
+
+.column-title-edit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.column-name-input {
+  flex: 1;
+  padding: 2px 4px;
+  border: 2px solid #3498db;
+  border-radius: 2px;
+  font-size: 16px;
+  font-weight: 600;
+  font-family: inherit;
+  background-color: white;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+  color: #2c3e50;
+  min-width: 0;
+  line-height: 1.2;
+}
+
+.column-name-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+.column-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+  padding: 0;
+  color: #2c3e50;
+  line-height: 1;
+}
+
+.task-count {
+  font-size: 13px;
+  color: #7f8c8d;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.column-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.btn-edit-confirm {
+  width: 24px;
+  height: 24px;
+  border: 1px solid #27ae60;
+  background-color: white;
+  color: #27ae60;
+  font-size: 14px;
+  font-weight: bold;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.btn-edit-confirm:hover {
+  background-color: #27ae60;
+  color: white;
+  transform: scale(1.1);
+}
+
+.btn-edit-cancel {
+  width: 24px;
+  height: 24px;
+  border: 1px solid #e67e22;
+  background-color: white;
+  color: #e67e22;
+  font-size: 14px;
+  font-weight: bold;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.btn-edit-cancel:hover {
+  background-color: #e67e22;
+  color: white;
+  transform: scale(1.1);
+}
+
+.btn-delete-column {
+  width: 24px;
+  height: 24px;
+  border: 1px solid #e74c3c;
+  background-color: #fef2f2;
+  color: #e74c3c;
+  font-size: 14px;
+  font-weight: bold;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  opacity: 0;
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
+.column-header:hover .btn-delete-column {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.btn-delete-column:hover {
+  background-color: #e74c3c;
+  color: white;
+  transform: scale(1.1);
+}
+
+/* タスク一覧 */
+.task-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: calc(100% - 120px);
+}
+
+.task-list::-webkit-scrollbar {
+  width: 6px;
+}
+.task-list::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 3px;
+}
+
+/* タスク追加セクション */
+.add-task-section {
+  padding: 12px;
+  border-top: 1px solid #ecf0f1;
+  flex-shrink: 0;
+}
+
+.btn-add-task-toggle {
+  width: 100%;
+  padding: 10px;
+  border: 2px dashed #27ae60;
+  background-color: #f9f9f9;
+  color: #27ae60;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-add-task-toggle:hover {
+  background-color: #efe;
+  border-color: #080;
+  color: #080;
+}
+
+
+
+/* リスト追加カード */
+.add-column-card {
+  flex: 0 0 300px;
+  background-color: #ecf0f1;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+  flex-shrink: 0;
+}
+
+.add-column-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  align-items: center;
+}
+
+.add-column-content h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.add-column-input {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.add-column-input input {
+  padding: 10px 12px;
+  border: 2px solid #bdc3c7;
+  border-radius: 6px;
+  font-size: 13px;
+  transition: border-color 0.2s ease;
+}
+
+.add-column-input input:focus {
+  outline: none;
+  border-color: #3498db;
+}
+
+.btn-add-icon {
+  width: 40px;
+  height: 40px;
+  border: 2px solid #3498db;
+  background-color: #3498db;
+  color: white;
+  font-size: 20px;
+  font-weight: bold;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+}
+
+.btn-add-icon:hover {
+  background-color: #2980b9;
+  border-color: #2980b9;
+  transform: scale(1.05);
+}
+
+/* リスト追加セクション */
+.add-column-section {
+  flex: 0 0 auto;
+  padding: 0 12px;
+}
+
+.btn-add-column-toggle {
+  width: 100%;
+  padding: 12px;
+  border: 2px dashed #3498db;
+  background-color: #f9f9f9;
+  color: #3498db;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-add-column-toggle:hover {
+  background-color: #ebf5fb;
+  border-color: #2980b9;
+  color: #2980b9;
+}
+
+/* リスト入力フォーム */
+.add-column-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background-color: #ecf0f1;
+  border-radius: 6px;
+}
+
+.column-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #3498db;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  background-color: white;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+ 
+.column-input:focus {
+  outline: none;
+  border-color: #2980b9;
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.1);
+}
+
+.column-input-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-add-confirm {
+  flex: 1;
+  padding: 6px 12px;
+  background-color: #3498db;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+
+}
+
+.btn-add-confirm:hover {
+  background-color: #2980b9;
+}
+
+.btn-add-cancel {
+  padding: 6px 12px;
+  background-color: white;
+  color: #7f8c8d;
+  border: 1px solid #bdc3c7;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-add-cancel:hover {
+  background-color: #f1f2f6;
+  color: #2c3e50;
+  border-color: #95a5a6;
+}
+

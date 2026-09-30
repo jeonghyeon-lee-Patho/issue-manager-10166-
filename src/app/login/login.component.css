@@ -1,0 +1,218 @@
+/* 全体背景グラデーション */
+.login-wrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 100%);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.login-container {
+  width: 100%;
+  max-width: 400px;
+}
+
+/* ロゴ & ブランドヘッダー */
+.brand-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.brand-icon {
+  font-size: 36px;
+  margin-bottom: 4px;
+}
+
+.brand-title {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 800;
+  color: #1e293b;
+  letter-spacing: -0.5px;
+}
+
+.brand-subtitle {
+  margin: 6px 0 0;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+/* メインカード */
+.login-card {
+  background: #ffffff;
+  padding: 32px 28px;
+  border-radius: 16px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.card-title {
+  margin: 0 0 24px;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0f172a;
+  text-align: center;
+}
+
+/* フォーム要素 */
+.form-group {
+  margin-bottom: 18px;
+  text-align: left;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 600;
+  font-size: 0.825rem;
+  color: #334155;
+}
+
+.input-wrapper {
+  position: relative;
+}
+
+.input-wrapper input {
+  width: 100%;
+  padding: 11px 14px;
+  box-sizing: border-box;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  color: #0f172a;
+  background-color: #f8fafc;
+  transition: all 0.2s ease;
+}
+
+.input-wrapper input:focus {
+  outline: none;
+  border-color: #2563eb;
+  background-color: #ffffff;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+}
+
+/* パスワード目の表示ボタン */
+.password-wrapper input {
+  padding-right: 42px;
+}
+
+.btn-toggle-pass {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.1rem;
+  opacity: 0.6;
+  padding: 4px;
+  transition: opacity 0.2s;
+}
+
+.btn-toggle-pass:hover {
+  opacity: 1;
+}
+
+/* サブリンク */
+.link-right {
+  text-align: right;
+  margin-top: -6px;
+  margin-bottom: 16px;
+}
+
+.sub-link {
+  color: #2563eb;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.sub-link:hover {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+
+/* アクションボタン */
+.btn-primary {
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.95rem;
+  margin-top: 8px;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
+  transform: translateY(-1px);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+/* メッセージボックス */
+.error-msg-box {
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  font-size: 0.825rem;
+  padding: 10px 12px;
+  border-radius: 8px;
+  margin-bottom: 14px;
+  text-align: left;
+
+  white-space: pre-wrap;
+}
+
+.resend-msg-box {
+  background-color: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #16a34a;
+  font-size: 0.825rem;
+  padding: 10px 12px;
+  border-radius: 8px;
+  margin-bottom: 14px;
+  cursor: pointer;
+  text-align: left;
+  font-weight: 600;
+  transition: background-color 0.2s;
+}
+
+.resend-msg-box:hover {
+  background-color: #dcfce7;
+}
+
+/* モード切替テキスト */
+.card-footer {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #f1f5f9;
+  text-align: center;
+}
+
+.toggle-text {
+  color: #475569;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin: 0;
+  transition: color 0.2s;
+}
+
+.toggle-text:hover {
+  color: #2563eb;
+  text-decoration: underline;
+}

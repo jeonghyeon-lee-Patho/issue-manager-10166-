@@ -1,0 +1,132 @@
+<div class="members-container">
+  <h3 class="members-header">👥 ボードメンバー</h3>
+
+  <div *ngIf="members.length === 0" class="empty-state">
+    メンバーがまだいません
+  </div>
+
+  <div *ngIf="members.length > 0" class="members-list">
+    <div *ngFor="let member of members; let i = index" class="member-card" [class.is-me]="member.uid === currentUserUid"
+      [class.is-dragging]="draggedMemberUid === member.uid" [attr.draggable]="editingUid !== member.uid"
+      (dragstart)="onMemberDragStart($event, member, i)" (dragover)="onMemberDragOver($event)"
+      (drop)="onMemberDrop($event, i)" (dragend)="onMemberDragEnd()">
+
+      <!-- 編集モード (自分のデータかつ編集中の場合) -->
+      <div *ngIf="editingUid === member.uid; else viewMode" class="member-edit-form">
+        <div class="editing-user-name">
+          <strong>{{ member.displayName }}</strong> のプロフィール設定
+        </div>
+
+        <div class="form-grid">
+          <div class="form-field">
+            <label>ポジション・役職</label>
+            <input type="text" [(ngModel)]="editingPosition" maxlength="20" placeholder="例: フロントエンド / リーダー (20文字まで)" class="input-text" />
+          </div>
+
+          <div class="form-field">
+            <label>連絡先ID (Slack等)</label>
+            <input type="text" [(ngModel)]="editingContactId" maxlength="50" placeholder="例: @tanaka_dev (50文字まで)" class="input-text" />
+          </div>
+
+          <div class="form-field full-width">
+            <label>担当領域</label>
+            <input type="text" [(ngModel)]="editingDomain" maxlength="50" placeholder="例: Angular, UI/UX, API設計 (50文字まで)" class="input-text" />
+          </div>
+
+          <div class="form-field full-width">
+            <label>一言ステータス・稼働状況</label>
+            <input type="text" [(ngModel)]="editingStatusMessage" maxlength="50" placeholder="例: 今週リリース前で多忙 / リモート勤務中 (50文字まで)"
+              class="input-text" />
+          </div>
+        </div>
+
+        <div class="edit-actions">
+          <button class="btn-save" (click)="saveMemberProfile(member)">保存</button>
+          <button class="btn-cancel" (click)="cancelEdit()">キャンセル</button>
+        </div>
+      </div>
+ 
+      <!-- 通常表示モード -->
+      <ng-template #viewMode>
+        <div class="member-info-container">
+          <img [src]="member.photoURL || defaultPhotoUrl" alt="Profile" class="member-card-avatar" />
+          <div class="member-info">
+            <div class="member-name">
+              <span class="member-display-name">{{ member.displayName }}</span>
+              <span *ngIf="member.role === 'admin'" class="admin-badge">👑 管理者</span>
+              <span *ngIf="member.position" class="member-position-tag">{{ member.position }}</span>
+              <span *ngIf="member.statusMessage" class="member-status-bubble">💬 {{ member.statusMessage }}</span>
+            </div>
+            <div class="member-details">
+              <div *ngIf="member.domain" class="member-domain-row">
+                <span class="detail-label">担当領域:</span> {{ member.domain }}
+              </div>
+              <div class="member-sub-info">
+                <span class="member-email">{{ member.email }}</span>
+                <span *ngIf="member.contactId" class="member-contact-tag">連絡先: {{ member.contactId }}</span>
+                <span class="member-joined">参加: {{ member.joinedAt | date: 'yyyy-MM-dd' }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- アクションボタンエリア（右側に綺麗に整列） -->
+        <div class="member-actions">
+          <!-- 自分のプロフィール設定 -->
+          <button *ngIf="member.uid === currentUserUid" class="btn-edit" (click)="startEdit(member)">
+            ✎ プロフィール
+          </button>
+
+          <!-- 管理者用操作ボタン -->
+          <ng-container *ngIf="isCurrentUserAdmin">
+            <!-- 自分自身の管理者辞退 -->
+            <button *ngIf="member.uid === currentUserUid" class="btn-warning" (click)="relinquishAdmin(member)" title="管理者権限を辞める">
+              辞める
+            </button>
+
+            <ng-container *ngIf="member.uid !== currentUserUid">
+              <button *ngIf="member.role !== 'admin'" class="btn-small" (click)="grantAdmin(member)">
+                👑 権限追加
+              </button>
+              <button *ngIf="member.role !== 'admin'" class="btn-small" (click)="transferAdmin(member)">
+                🔄 譲渡
+              </button>
+              <button class="btn-small btn-delete" (click)="kickMember(member)">
+                🚫 追放
+              </button>
+            </ng-container>
+          </ng-container>
+        </div>
+      </ng-template>
+    </div>
+  </div>
+
+  <!-- メンバーなら誰もが招待可能 -->
+  <div *ngIf="isCurrentUserMember()" class="invite-section">
+    <h4>新しいメンバーを招待</h4>
+    <p class="invite-hint">メールアドレスを入力して招待を送信します</p>
+    <button class="btn-open-invite" (click)="openInviteModal()">📨 招待フォームを開く</button>
+  </div>
+
+  <!-- 招待モーダル -->
+  <div *ngIf="showInviteModal" class="modal-overlay">
+    <div class="modal-content">
+      <h3>メンバーを招待</h3>
+      <p class="step-desc">招待するメールアドレスを入力してください</p>
+
+      <div class="form-group">
+        <label>メールアドレス *</label>
+        <input [(ngModel)]="inviteEmail" placeholder="例: user@example.com" (keyup.enter)="inviteMember()" />
+      </div>
+
+      <div *ngIf="inviteError" class="error-message">
+        ⚠️ {{ inviteError }}
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-secondary" (click)="closeInviteModal()">キャンセル</button>
+        <button class="btn-primary" (click)="inviteMember()">招待を送信</button>
+      </div>
+    </div>
+  </div>
+</div>

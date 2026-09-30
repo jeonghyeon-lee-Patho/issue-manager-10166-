@@ -1,0 +1,171 @@
+<div *ngIf="isOpen" class="modal-overlay">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>{{ getModalTitle() }}</h2>
+      <button class="btn-close" (click)="cancel()">×</button>
+    </div>
+
+    <div class="modal-body">
+      <!-- タスクタイトル（必修） -->
+      <div class="form-group">
+        <label>
+          タイトル
+          <span class="required">*</span>
+          <small class="char-count">({{ editingTask.title?.length || 0 }}/100)</small>
+        </label>
+        <input type="text" [(ngModel)]="editingTask.title" maxlength="100" class="form-control"
+          [class.error]="titleError && !editingTask.title" placeholder="課題の名前を入力..." />
+        <span *ngIf="titleError && !editingTask.title" class="error-message">{{ titleError }}</span>
+      </div>
+
+      <!-- 説明 -->
+      <div class="form-group">
+        <label>
+          説明
+          <small class="char-count">({{ editingTask.description?.length || 0 }}/1000)</small>
+        </label>
+        <textarea [(ngModel)]="editingTask.description" maxlength="1000" class="form-control" rows="3"></textarea>
+      </div>
+
+      <!-- ステータス -->
+      <div class="form-group">
+        <label>ステータス</label>
+        <select [(ngModel)]="editingTask.status" class="form-control">
+          <option *ngFor="let col of columns" [value]="col">{{ col }}</option>
+        </select>
+      </div>
+
+      <!-- 優先度 -->
+      <div class="form-group">
+        <label>優先度</label>
+        <div class="priority-buttons">
+          <button [class.active]="editingTask.priority === undefined" (click)="editingTask.priority = undefined"
+            class="btn-priority btn-priority-none">
+            なし
+          </button>
+          <button *ngFor="let p of priorities" [class.active]="editingTask.priority === p"
+            (click)="editingTask.priority = p" [class]="'btn-priority btn-priority-' + p">
+            {{ getPriorityLabel(p) }}
+          </button>
+        </div>
+      </div>
+
+      <!-- 期限 -->
+      <div class="form-group">
+        <label>期限</label>
+        <input type="date" [ngModel]="editingTask.dueDate ? (editingTask.dueDate | date:'yyyy-MM-dd') : ''"
+          (ngModelChange)="setDueDate($event)" class="form-control" />
+      </div>
+
+      <!-- 担当者 -->
+      <div class="form-group">
+        <label><strong>担当者</strong></label>
+        <div class="assignees-list">
+          <button *ngFor="let member of boardMembers" [class.selected]="isAssigned(member)"
+            (click)="toggleAssignee(member)" class="btn-assignee">
+            {{ member }}
+          </button>
+        </div>
+        <div *ngIf="editingTask.assignees && editingTask.assignees.length > 0" class="selected-assignees">
+          <div *ngFor="let assignee of editingTask.assignees" class="assignee-tag">
+            {{ assignee }}
+            <button class="btn-remove-assignee" (click)="toggleAssignee(assignee)">×</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- タグ（最大5つ） -->
+      <div class="form-group">
+        <label>
+          <strong>タグ</strong>
+          <small class="hint-text">（最大5つまで）</small>
+        </label>
+
+        <!-- タグ入力エリア -->
+        <div class="add-tag">
+          <input type="text" [(ngModel)]="newTagInput" maxlength="15" placeholder="タグを追加 (最大15文字)..."
+            [disabled]="(editingTask.tags?.length || 0) >= 5" (keyup.enter)="addTag()" />
+          <button type="button" class="btn-small" (click)="addTag()" [disabled]="(editingTask.tags?.length || 0) >= 5">
+            追加
+          </button>
+        </div>
+
+        <!-- 登録済みタグ一覧 -->
+        <div *ngIf="editingTask.tags && editingTask.tags.length > 0" class="selected-tags">
+          <span *ngFor="let tag of editingTask.tags; let i = index" class="tag-badge-edit">
+            #{{ tag }}
+            <button type="button" class="btn-remove-tag" (click)="removeTag(i)">×</button>
+          </span>
+        </div>
+      </div>
+
+      <!-- サブタスク -->
+      <div class="form-group">
+        <label>
+          <strong>サブタスク</strong>
+          <button class="btn-small" (click)="addSubtask()">+ 追加</button>
+        </label>
+        <div *ngIf="editingTask.subtasks && editingTask.subtasks.length > 0" class="subtasks-list">
+          <div *ngFor="let subtask of editingTask.subtasks; let i = index" class="subtask-item">
+            <input type="checkbox" [(ngModel)]="subtask.completed" />
+            <input type="text" [(ngModel)]="subtask.title" maxlength="50" placeholder="サブタスク名 (最大50文字)..." />
+            <button class="btn-remove" (click)="removeSubtask(i)">削除</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- コメント -->
+      <div class="form-group">
+        <label><strong>コメント</strong></label>
+        <div class="comments-section">
+          <div *ngIf="editingTask.comments && editingTask.comments.length > 0" class="comments-list">
+            <div *ngFor="let comment of editingTask.comments; let i = index" class="comment-item">
+
+              <!-- ヘッダー（投稿者・日付・操作ボタン） -->
+              <div class="comment-header">
+                <strong class="comment-author">{{ comment.author || 'Anonymous' }}</strong>
+                <div class="comment-header-right">
+
+                  <!-- 自分のコメントかつ非編集時のみ表示 -->
+                  <div *ngIf="comment.author === currentUserName && editingCommentIndex !== i" class="comment-actions">
+                    <button class="btn-icon-small" (click)="startEditComment(i, comment.text)" title="編集">✏️</button>
+                    <button class="btn-icon-small btn-remove" (click)="removeComment(i)" title="削除">×</button>
+                  </div>
+                  <small class="comment-date">{{ comment.createdAt | date:'yyyy/MM/dd HH:mm' }}</small>
+                </div>
+              </div>
+
+              <!-- ★1. 通常表示（非編集時） -->
+              <div *ngIf="editingCommentIndex !== i" class="comment-text">{{ comment.text }}</div>
+
+              <!-- ★2. 編集モード（editingCommentIndex === i の時） -->
+              <div *ngIf="editingCommentIndex === i" class="comment-edit-box">
+                <textarea [(ngModel)]="editingCommentText" class="comment-edit-textarea"></textarea>
+                <div class="comment-edit-actions">
+                  <button class="btn-small btn-primary" (click)="saveCommentEdit(i)">保存</button>
+                  <button class="btn-small btn-secondary" (click)="cancelCommentEdit()">キャンセル</button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- 新規コメント入力フォーム -->
+          <div class="add-comment">
+            <textarea #commentInput maxlength="500" placeholder="コメントを追加 (最大500文字)..."></textarea>
+            <button class="btn-small" (click)="addComment(commentInput.value); commentInput.value = ''">追加</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button *ngIf="!isNewTask()" type="button" class="btn-wiki-export" (click)="exportToWiki()"
+        [disabled]="isExportingWiki" title="この課題の内容とコメントをWikiにナレッジとして保存します">
+        {{ isExportingWiki ? '転記中...' : '💡 Wikiにナレッジ保存' }}
+      </button>
+      <button class="btn-cancel" (click)="cancel()">キャンセル</button>
+      <button class="btn-save" (click)="saveEdit()">保存</button>
+    </div>
+  </div>
+</div>

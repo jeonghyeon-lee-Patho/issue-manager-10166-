@@ -1,51 +1,415 @@
 .home-container {
-    padding: 30px;
-    max-width: 450px;
-    margin: 0 auto;
-    font-family: sans-serif;
-  }
-  
-  .card {
-    margin-bottom: 24px;
-    padding: 16px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    background-color: #fafafa;
-  }
-  
-  .card h3 {
-    margin-top: 0;
-    margin-bottom: 8px;
-  }
-  
-  .description {
-    font-size: 0.9em;
-    color: #666;
-    margin-bottom: 12px;
-  }
-  
-  .input-group {
-    display: flex;
-    gap: 8px;
-  }
-  
-  .input-group input {
-    flex: 1;
-    padding: 8px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-  }
-  
-  .btn-primary {
-    padding: 8px 16px;
-    background-color: #007bff;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-weight: bold;
-  }
-  
-  .btn-primary:hover {
-    background-color: #0056b3;
-  }
+  min-height: 100vh;
+  background: #f5f5f5;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+}
+
+/* ================== ヘッダー ================== */
+.header {
+  background-color: #2c3e50;
+  color: white;
+  padding: 20px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.header h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+}  
+
+.header div { 
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.email-text {
+  font-size: 14px;
+  color: #ecf0f1;
+}
+
+.btn-create {
+  background-color: #27ae60;
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.btn-create:hover {
+  background-color: #229954;
+  transform: scale(1.02);
+}
+
+.btn-logout {
+  background-color: #e74c3c;
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.btn-logout:hover {
+  background-color: #c0392b;
+  transform: scale(1.02);
+}
+
+/* ================== ボード一覧グリッド ================== */
+.board-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 320px);
+  gap: 20px;
+  padding: 24px;
+}
+
+/* セクションスタイル */
+.pending-section, .owned-section {
+  margin-bottom: 30px;
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #2c3e50;
+  margin: 0;
+  padding: 0 24px;
+  margin-top: 20px;
+  margin-bottom: 12px;
+}
+
+/* 招待待ちボード */
+.pending-boards-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  padding: 0 24px 20px 24px;
+}
+
+.pending-board-card {
+  background: linear-gradient(135deg, #fff8e1 0%, #fffbf0 100%);
+  border: 2px solid #ffd54f;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 2px 6px rgba(255, 213, 79, 0.2);
+}
+
+.pending-board-card h4 {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  color: #2c3e50;
+}
+
+.invitation-info {
+  margin: 0 0 12px 0;
+  font-size: 12px;
+  color: #7f8c8d;
+}
+
+.invitation-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-accept, .btn-reject {
+  flex: 1;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.btn-accept {
+  background-color: #27ae60;
+  color: white;
+}
+
+.btn-accept:hover {
+  background-color: #229954;
+  transform: scale(1.02);
+}
+
+.btn-reject {
+  background-color: #e74c3c;
+  color: white;
+}
+
+.btn-reject:hover {
+  background-color: #c0392b;
+  transform: scale(1.02);
+}
+
+.empty-state {
+  color: #7f8c8d;
+  font-size: 14px;
+  text-align: center;
+  padding: 40px 24px;
+}
+
+.board-card {
+  background: white;
+  border-radius: 8px;
+  padding: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: all 0.2s ease;
+  border: 2px solid transparent;
+  display: flex;
+  user-select: none;
+  cursor: grab;
+  position: relative;
+
+  align-items: stretch;
+  min-height: 150px;
+}
+
+.board-card:active {
+  cursor: grabbing;
+}
+
+.board-card.dragging {
+  opacity: 0.6;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+.board-card:hover {
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
+  border-color: #3498db;
+  transform: translateY(-4px);
+}
+
+.board-card:hover .btn-delete-board {
+  opacity: 1;
+}
+
+.board-card-content {
+  flex: 1;
+  padding: 16px;
+  cursor: pointer;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto 1fr;
+  gap: 16px;
+  min-height: 120px;
+
+  height: 100%;           
+  box-sizing: border-box; 
+}
+
+.board-card-left {
+  grid-column: 1 / 2;
+  grid-row: 1 / 3;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.board-left-top {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.board-card-right {
+  grid-column: 2 / 3;
+  grid-row: 2 / 3;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: flex-end;
+}
+
+.board-card-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-end;
+}
+
+.stat-row {
+  display: flex;
+  gap: 4px;
+}
+
+.board-card h3 {
+  margin: 0 0 12px 0;
+  font-size: 18px;
+  color: #2c3e50;
+  word-break: break-word;
+}
+
+.board-card .creator {
+  margin: 0 0 8px 0;
+  font-size: 13px;
+  color: #7f8c8d;
+}
+
+.editable-board-title {
+  cursor: text;
+}
+
+.board-title {
+  margin: 0 0 12px 0;
+  font-size: 18px;
+  color: #2c3e50;
+  word-break: break-word;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.board-title:hover {
+  background-color: rgba(52, 152, 219, 0.1);
+}
+
+.board-title-input {
+  width: 100%;
+  padding: 4px 6px; 
+  font-size: 18px;
+  font-weight: 600;
+  border: 2px solid #2c3e50; 
+  border-radius: 4px;
+  margin-bottom: 12px;
+  box-sizing: border-box;
+}
+
+.board-stats {
+  display: flex;
+  gap: 12px;
+  margin: 10px 0;
+  flex-wrap: wrap;
+}
+
+.stat-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: #34495e;
+  background-color: #ecf0f1;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.board-meta {
+  margin: 8px 0;
+  font-size: 12px;
+  color: #95a5a6;
+}
+
+.last-updated {
+  display: inline-block;
+  padding: 2px 6px;
+  background-color: #ecf0f1;
+  border-radius: 3px;
+}
+
+.url-param {
+  display: inline-block;
+  background-color: #ecf0f1;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #34495e;
+  font-family: 'Courier New', monospace;
+}
+
+.btn-delete-board {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px 12px;
+  transition: all 0.2s ease;
+  opacity: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  color: #e74c3c;
+  flex-shrink: 0;
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
+.btn-delete-board svg {
+  width: 20px;
+  height: 20px;
+  pointer-events: none;
+}
+
+.btn-delete-board:hover {
+  background-color:rgba(231, 76, 60, 0.1);
+  border-radius: 4px;
+  transform: scale(1.1);
+}
+
+.btn-delete-board:hover svg {
+  color: #c0392b;
+}
+
+/* モーダル基本スタイル */
+.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+.modal-content { background: white; padding: 24px; border-radius: 8px; width: 360px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); }
+.modal-content h3 { margin-top: 0; margin-bottom: 8px; font-size: 1.1em; color: #333; }
+.step-desc { font-size: 0.8em; color: #666; margin-top: 0; margin-bottom: 16px; }
+
+.form-group { margin-bottom: 14px; }
+.form-group label { display: block; font-size: 0.8em; font-weight: bold; margin-bottom: 4px; color: #444; }
+.form-group input { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+
+/* STEP 2: 縦並びリストスタイル */
+.column-vertical-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+  margin-bottom: 12px;
+  padding-right: 4px;
+}
+
+.column-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.9em;
+}
+
+.col-name { font-weight: 500; color: #333; }
+.btn-icon-delete { background: none; border: none; color: #dc3545; cursor: pointer; font-weight: bold; font-size: 0.9em; }
+.btn-icon-delete:hover { color: #a71d2a; }
+
+/* リスト追加ボタン・フォーム */
+.add-column-section { margin-bottom: 20px; }
+.btn-add-trigger { width: 100%; padding: 8px; background: #e7f1ff; color: #0d6efd; border: 1px dashed #0d6efd; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.85em; }
+.btn-add-trigger:hover { background: #d0e2ff; }
+
+.add-column-box { display: flex; gap: 6px; }
+.add-column-box input { flex: 1; padding: 6px 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.85em; }
+.btn-small-primary { background: #0d6efd; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8em; }
+.btn-small-secondary { background: #6c757d; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8em; }
+
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; border-top: 1px solid #eee; padding-top: 12px; }
+.btn-primary { background: #007bff; color: white; border: none; padding: 8px 14px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+.btn-secondary { background: #6c757d; color: white; border: none; padding: 8px 14px; border-radius: 4px; cursor: pointer; }
