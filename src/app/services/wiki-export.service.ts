@@ -26,6 +26,7 @@ export class WikiExportService {
 
     // 【基本情報ブロック】
     lines.push('【基本情報】');
+    lines.push(`・ナレッジ保存時間 : ${formatDateTimeToJP(Date.now())}`);
     lines.push(`・ステータス : ${task.status || '未設定'}`);
     lines.push(`・優 先 度   : ${priorityLabel}`);
     lines.push(`・期    限   : ${dueDateStr || '未設定'}`);
@@ -90,17 +91,17 @@ export class WikiExportService {
 
     const boardData = boardSnap.data();
     let wikiSections: WikiSection[] = boardData['wikiSections'] || [];
+    const rawWikiSections = boardData['wikiSections'];
 
-    // 既存セクションに DEFAULT_TEMPLATES が無い場合は追加
-    const existingIds = new Set(wikiSections.map(s => s.id));
-    if (!existingIds.has('vision')) {
-      wikiSections.unshift({ id: 'vision', ...DEFAULT_TEMPLATES['vision'] });
-    }
-    if (!existingIds.has('rules')) {
-      wikiSections.unshift({ id: 'rules', ...DEFAULT_TEMPLATES['rules'] });
-    }
-    if (!existingIds.has('links')) {
-      wikiSections.unshift({ id: 'links', ...DEFAULT_TEMPLATES['links'] });
+    if (rawWikiSections === undefined) {
+      const now = Date.now();
+      wikiSections = [
+        { id: 'vision', ...DEFAULT_TEMPLATES['vision'], updatedAt: now },
+        { id: 'rules', ...DEFAULT_TEMPLATES['rules'], updatedAt: now },
+        { id: 'links', ...DEFAULT_TEMPLATES['links'], updatedAt: now }
+      ];
+    } else {
+      wikiSections = [...rawWikiSections];
     }
 
     // Wiki形式に変換
@@ -111,7 +112,8 @@ export class WikiExportService {
       id: 'wiki_export_' + Date.now(),
       title: `[ナレッジ] ${task.title}`,
       icon: '💡',
-      content: formattedContent
+      content: formattedContent,
+      updatedAt: Date.now()
     };
 
     // Firestoreに保存

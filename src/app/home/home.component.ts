@@ -306,13 +306,11 @@ export class HomeComponent implements OnInit {
         const memberUids = updatedMembers.map(m => m.uid);
         await updateDoc(boardRef, {
           members: updatedMembers,
-          memberUids: memberUids,
-          lastUpdatedAt: Date.now()
+          memberUids: memberUids
         });
         alert('ボードから削除されました');
       }
 
-      // 【重要】削除後に即座にローカル配列から削除
       this.allBoards = this.allBoards.filter(b => b.id !== board.id);
       this.cdr.detectChanges();
     } catch (error: any) {

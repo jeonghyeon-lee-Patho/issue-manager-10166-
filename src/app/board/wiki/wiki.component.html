@@ -42,7 +42,12 @@
       <div *ngFor="let section of sections" class="section-block">
         <div class="section-block-header">
           <h3>{{ section.icon }} {{ section.title }}</h3>
-          <button class="btn-secondary btn-small" (click)="editSpecificSection(section.id)">✏️ 編集</button>
+          <div class="section-header-actions">
+            <span *ngIf="section.updatedAt" class="wiki-timestamp">
+              {{ section.updatedAt | date:'yyyy/MM/dd HH:mm' }}
+            </span>
+            <button class="btn-secondary btn-small" (click)="editSpecificSection(section.id)">✏️ 編集</button>
+          </div>  
         </div>
         <div class="rendered-text">{{ section.content || '📝 内容がありません。' }}</div>
       </div>
@@ -63,6 +68,10 @@
       </div>
 
       <div class="header-actions">
+        <span *ngIf="!isEditing && activeSection.updatedAt" class="wiki-timestamp">
+          更新日時: {{ activeSection.updatedAt | date:'yyyy/MM/dd HH:mm' }}
+        </span>
+        
         <button *ngIf="!isEditing" class="btn-secondary btn-small" (click)="startEdit()">✏️ 編集</button>
 
         <ng-container *ngIf="isEditing">

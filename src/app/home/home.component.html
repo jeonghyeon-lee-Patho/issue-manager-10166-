@@ -144,7 +144,8 @@
           <div *ngIf="showAddColumnInput" class="add-column-box">
             <input 
               [(ngModel)]="newColumnInput" 
-              placeholder="リスト名 (例: レビュー待ち)" 
+              maxlength="20"
+              placeholder="リスト名を入力 (最大20文字)..." 
               (keyup.enter)="addColumnSetting()" 
               autofocus 
             />

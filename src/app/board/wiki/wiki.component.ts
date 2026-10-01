@@ -9,6 +9,7 @@ export interface WikiSection {
   title: string;
   icon: string;
   content: string;
+  updatedAt?: number;
 }
 
 @Component({
@@ -55,10 +56,11 @@ export class WikiComponent implements OnChanges {
 
   // 初期項目の作成
   initDefaultSections() {
+    const now = Date.now();
     this.sections = [
-      { id: 'vision', ...DEFAULT_TEMPLATES['vision'] },
-      { id: 'rules', ...DEFAULT_TEMPLATES['rules'] },
-      { id: 'links', ...DEFAULT_TEMPLATES['links'] }
+      { id: 'vision', ...DEFAULT_TEMPLATES['vision'], updatedAt: now },
+      { id: 'rules', ...DEFAULT_TEMPLATES['rules'], updatedAt: now },
+      { id: 'links', ...DEFAULT_TEMPLATES['links'], updatedAt: now }
     ];
   }
 
@@ -135,7 +137,8 @@ export class WikiComponent implements OnChanges {
       id: newId,
       title: '無題の項目',
       icon: '📄',
-      content: ''
+      content: '',
+      updatedAt: Date.now()
     };
     this.sections.push(newSection);
     this.activeSectionId = newId;
@@ -194,6 +197,7 @@ export class WikiComponent implements OnChanges {
     this.activeSection.title = this.editingTitle.trim() || '無題の項目';
     this.activeSection.icon = this.editingIcon;
     this.activeSection.content = this.editingContent;
+    this.activeSection.updatedAt = Date.now();
 
     await this.saveToFirestore();
     this.isEditing = false;
@@ -205,13 +209,15 @@ export class WikiComponent implements OnChanges {
     this.isSaving = true;
 
     try {
+      const cleanedSections = JSON.parse(JSON.stringify(this.sections));
       const boardRef = doc(this.firestore, `boards/${this.boardId}`);
-      await setDoc(boardRef, { wikiSections: this.sections }, { merge: true });
+      await setDoc(boardRef, { wikiSections: cleanedSections }, { merge: true });
     } catch (err) {
       console.error('Wiki Save Error:', err);
       alert('保存に失敗しました');
     } finally {
       this.isSaving = false;
+      this.cdr.detectChanges();
     }
   }
 }
