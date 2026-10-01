@@ -2,6 +2,7 @@ import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Task, TaskService } from '../task.service';
+import { calculateDeadlineStatus } from '../../../utils/date.util';
 
 @Component({
   selector: 'app-task-card',
@@ -48,52 +49,15 @@ export class TaskCardComponent {
 
   // デッドラインによる色わけ
   getTaskColor(task: Task): string {
-    if (!task.dueDate) {
-      return '#f9f9f9';
-    }
-
-    const deadline = new Date(task.dueDate);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const deadlineDate = new Date(deadline);
-    deadlineDate.setHours(0, 0, 0, 0);
-
-    const diffTime = deadlineDate.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    if (diffDays < 0) {
-      return '#fee2e2';
-    }
-
-    if (diffDays <= 3) {
-      return '#e2e8f0';
-    }
-
-    return '#f9f9f9';
+    const status = calculateDeadlineStatus(task.dueDate);
+    return status.color;
   }
  
   // 追加：期限の状態テキストを取得（例: "【期限切れ】", "【今日まで】", "【あと2日】"）
   getDueDateLabel(dueDateStr?: string | number | Date): string | null {
     if (!dueDateStr) return null;
-
-    const deadline = new Date(dueDateStr);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const deadlineDate = new Date(deadline);
-    deadlineDate.setHours(0, 0, 0, 0);
-
-    const diffTime = deadlineDate.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    if (diffDays < 0) {
-      return '【期限切れ】';
-    }
-    if (diffDays === 0) {
-      return '【今日まで】';
-    }
-    if (diffDays <= 3) {
-      return `【あと${diffDays}日】`;
-    }
-    return null; // 4日以上先は表示しない（必要に応じて変更可）
+    const status = calculateDeadlineStatus(typeof dueDateStr === 'number' ? dueDateStr : new Date(dueDateStr).getTime());
+    return status.label;
   }
 
   // インライン編集
@@ -121,21 +85,21 @@ export class TaskCardComponent {
   }
 
   // 詳細表示の切り替え
-  toggleSubtasksDetail(event: Event) {
+  toggleSubtasksDetail(event: Event): void {
     event.stopPropagation();
     this.showSubtasksDetail = !this.showSubtasksDetail;
     this.showCommentsDetail = false;
     this.showAssigneesDetail = false;
   }
 
-  toggleCommentsDetail(event: Event) {
+  toggleCommentsDetail(event: Event): void {
     event.stopPropagation();
     this.showCommentsDetail = !this.showCommentsDetail;
     this.showSubtasksDetail = false;
     this.showAssigneesDetail = false;
   }
 
-  toggleAssigneesDetail(event: Event) {
+  toggleAssigneesDetail(event: Event): void {
     event.stopPropagation();
     this.showAssigneesDetail = !this.showAssigneesDetail;
     this.showSubtasksDetail = false;
@@ -146,7 +110,7 @@ export class TaskCardComponent {
   getAssigneeAvatar(assigneeName: string): string {
     const member = this.boardMembers.find(m => m.name === assigneeName || m.displayName === assigneeName);
 
-    if (member && member.photoURL) {
+    if (member?.photoURL) {
       return member.photoURL;
     }
 
@@ -154,8 +118,11 @@ export class TaskCardComponent {
   }
 
   // サブタスクの完了状態を更新
-  updateSubtask(subtask: any) {
-    subtask.completed = !subtask.completed;
-    this.updateTask.emit(this.task);
+  updateSubtask(subtask: any): void {
+    // イミュータブルな更新
+    const updatedSubtask = { ...subtask, completed: !subtask.completed };
+    const updatedSubtasks = this.task.subtasks?.map(st => st.id === subtask.id ? updatedSubtask : st) || [];
+    const updatedTask = { ...this.task, subtasks: updatedSubtasks };
+    this.updateTask.emit(updatedTask);
   }
 }

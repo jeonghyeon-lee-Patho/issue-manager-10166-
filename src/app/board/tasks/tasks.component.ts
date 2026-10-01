@@ -5,6 +5,8 @@ import { Task, TaskService } from './task.service';
 import { TaskCardComponent } from './task-card/task-card.component';
 import { TaskEditModalComponent } from './task-edit-modal/task-edit-modal.component';
 import { Firestore, collection, addDoc } from '@angular/fire/firestore';
+import { NotificationService } from '../../services/notification.service';
+import { toggleArrayValue } from '../../utils/object.util';
 
 @Component({
   selector: 'app-tasks',
@@ -67,6 +69,7 @@ export class TasksComponent {
   private cdr = inject(ChangeDetectorRef);
   private taskService = inject(TaskService);
   private firestore = inject(Firestore);
+  private notificationService = inject(NotificationService);
 
   getTasksByColumn(columnName: string): Task[] {
     return this.taskService.getTasksByColumn(this.getFilteredTasks(), columnName);
@@ -246,7 +249,7 @@ export class TasksComponent {
 
   async addTask(columnName: string) {
     const taskTitle = this.newTaskTitleByColumn[columnName];
-    if (!taskTitle || !taskTitle.trim() || !this.boardId) return;
+    if (!taskTitle?.trim() || !this.boardId?.trim()) return;
 
     const newTask = this.taskService.createNewTask(
       Date.now().toString(),
@@ -254,35 +257,48 @@ export class TasksComponent {
       columnName
     );
 
-    const updatedTasks = [...this.tasks, newTask];
-    await this.taskService.saveToFirestore(this.boardId, this.columns, updatedTasks);
-    this.tasks = updatedTasks;
-    this.newTaskTitleByColumn[columnName] = '';
-    this.showAddTaskInput[columnName] = false;
+    try {
+      const updatedTasks = [...this.tasks, newTask];
+      await this.taskService.saveToFirestore(this.boardId, this.columns, updatedTasks);
+      this.tasks = updatedTasks;
+      this.newTaskTitleByColumn[columnName] = '';
+      this.showAddTaskInput[columnName] = false;
 
-    await this.sendTaskNotification(newTask, 'create');
-    this.cdr.detectChanges();
+      await this.notificationService.sendTaskNotifications(this.boardId, newTask, 'create', this.currentUserName);
+      this.cdr.detectChanges();
+    } catch (err) {
+      console.error('Task creation error:', err);
+      alert('タスクの作成に失敗しました');
+    }
   }
 
   async moveTask(task: Task, newStatus: string) {
-    if (!this.boardId) return;
+    if (!this.boardId?.trim()) return;
 
-    const oldStatus = task.status;
-    const updatedTasks = this.taskService.updateTaskStatus(this.tasks, task.id, newStatus);
-    await this.taskService.saveToFirestore(this.boardId, this.columns, updatedTasks);
-    this.tasks = updatedTasks;
+    try {
+      const oldStatus = task.status;
+      const updatedTasks = this.taskService.updateTaskStatus(this.tasks, task.id, newStatus);
+      await this.taskService.saveToFirestore(this.boardId, this.columns, updatedTasks);
+      this.tasks = updatedTasks;
 
-    const movedTask: Task = { ...task, status: newStatus };
-    await this.sendTaskNotification(
-      movedTask,
-      'update',
-      `「${task.title}」が [${oldStatus}] → [${newStatus}] に移動しました`
-    );
-    this.cdr.detectChanges();
+      const movedTask: Task = { ...task, status: newStatus };
+      await this.notificationService.sendTaskNotifications(
+        this.boardId,
+        movedTask,
+        'update',
+        this.currentUserName,
+        [],
+        `「${task.title}」が [${oldStatus}] → [${newStatus}] に移動しました`
+      );
+      this.cdr.detectChanges();
+    } catch (err) {
+      console.error('Task move error:', err);
+      alert('タスクの移動に失敗しました');
+    }
   }
 
   async deleteTask(taskId: string) {
-    if (!this.boardId) return;
+    if (!this.boardId?.trim()) return;
 
     const targetTask = this.tasks.find(t => t.id === taskId);
 
@@ -290,14 +306,19 @@ export class TasksComponent {
       return;
     }
 
-    const updatedTasks = this.taskService.deleteTask(this.tasks, taskId);
-    await this.taskService.saveToFirestore(this.boardId, this.columns, updatedTasks);
-    this.tasks = updatedTasks;
+    try {
+      const updatedTasks = this.taskService.deleteTask(this.tasks, taskId);
+      await this.taskService.saveToFirestore(this.boardId, this.columns, updatedTasks);
+      this.tasks = updatedTasks;
 
-    if (targetTask) {
-      await this.sendTaskNotification(targetTask, 'delete');
+      if (targetTask) {
+        await this.notificationService.sendTaskNotifications(this.boardId, targetTask, 'delete', this.currentUserName);
+      }
+      this.cdr.detectChanges();
+    } catch (err) {
+      console.error('Task deletion error:', err);
+      alert('タスクの削除に失敗しました');
     }
-    this.cdr.detectChanges();
   }
 
   async addColumn() {
@@ -583,78 +604,15 @@ export class TasksComponent {
     customMessage?: string,
     oldAssignees: string[] = []
   ) {
-    if (!this.boardId) return;
-
     try {
-      const noticesRef = collection(this.firestore, `boards/${this.boardId}/notifications`);
-      const promises: Promise<any>[] = [];
-      const currentAssignees = task.assignees || [];
-  
-      // ①【重要】担当から外されたユーザーを特定して通知
-      if (oldAssignees.length > 0) {
-        const removedAssignees = oldAssignees.filter(user => !currentAssignees.includes(user));
-  
-        for (const removedUser of removedAssignees) {
-          // 操作者本人以外に通知を送信
-          if (removedUser !== this.currentUserName) {
-            promises.push(addDoc(noticesRef, {
-              targetUser: removedUser,
-              type: 'task',
-              title: '担当解除',
-              message: `タスク「${task.title}」の担当者から外されました (操作: ${this.currentUserName})`,
-              createdAt: Date.now(),
-              read: false
-            }));
-          }
-        }
-      }
-  
-      // ② 現在の担当者への通知（追加された人・継続の人）
-      if (currentAssignees.length > 0) {
-        let action: 'create' | 'update' | 'delete' = 'update';
-        if (typeof actionType === 'boolean') {
-          action = actionType ? 'create' : 'update';
-        } else {
-          action = actionType;
-        }
-  
-        let title = 'タスク更新';
-        let defaultMsg = `タスク「${task.title}」が更新されました`;
-  
-        if (action === 'create') {
-          title = '新規タスク割り当て';
-          defaultMsg = `新しいタスク「${task.title}」の担当に割り当てられました`;
-        } else if (action === 'delete') {
-          title = 'タスク削除';
-          defaultMsg = `担当していたタスク「${task.title}」が削除されました`;
-        }
-   
-        const finalMessage = `${customMessage || defaultMsg} (操作: ${this.currentUserName})`;
-  
-        for (const assignee of currentAssignees) {
-          // 新規に割り当てられた人の判定
-          const isNewlyAdded = oldAssignees.length > 0 && !oldAssignees.includes(assignee);
-          const notificationTitle = isNewlyAdded ? '新規タスク割り当て' : title;
-          const notificationMsg = isNewlyAdded 
-            ? `タスク「${task.title}」の担当者にあなたが追加されました (操作: ${this.currentUserName})`
-            : finalMessage;
-  
-          // 操作者本人以外に送信
-          if (assignee !== this.currentUserName) {
-            promises.push(addDoc(noticesRef, {
-              targetUser: assignee,
-              type: 'task',
-              title: notificationTitle,
-              message: notificationMsg,
-              createdAt: Date.now(),
-              read: false
-            }));
-          }
-        }
-      }
-  
-      // すべての通知作成を並列実行
-      await Promise.all(promises);
+      await this.notificationService.sendTaskNotifications(
+        this.boardId,
+        task,
+        actionType,
+        this.currentUserName,
+        oldAssignees,
+        customMessage
+      );
     } catch (err) {
       console.error('Notification Send Error:', err);
     }
@@ -710,27 +668,17 @@ export class TasksComponent {
     this.cdr.detectChanges();
   }
 
-  // 配列の要素をトグル（追加・削除）する内部ヘルパー
-  private toggleArrayValue(array: string[], value: string): string[] {
-    const index = array.indexOf(value);
-    if (index > -1) {
-      return array.filter(item => item !== value);
-    } else {
-      return [...array, value];
-    }
-  }
-
   // HTMLのチェックボックス(change)から受け取るトグル用メソッド
   toggleTempStatusFilter(value: string): void {
-    this.tempStatusFilter = this.toggleArrayValue(this.tempStatusFilter, value);
+    this.tempStatusFilter = toggleArrayValue(this.tempStatusFilter, value);
   }
 
   toggleTempPriorityFilter(value: string): void {
-    this.tempPriorityFilter = this.toggleArrayValue(this.tempPriorityFilter, value);
+    this.tempPriorityFilter = toggleArrayValue(this.tempPriorityFilter, value);
   }
 
   toggleTempAssigneeFilter(value: string): void {
-    this.tempAssigneeFilter = this.toggleArrayValue(this.tempAssigneeFilter, value);
+    this.tempAssigneeFilter = toggleArrayValue(this.tempAssigneeFilter, value);
   }
   ////
 

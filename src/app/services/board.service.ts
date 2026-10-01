@@ -3,6 +3,7 @@ import { Firestore, collection, doc, setDoc, updateDoc, query, where, getDocs, o
 import { Auth, authState } from '@angular/fire/auth';
 import { Observable } from 'rxjs';
 import { WikiSection } from '../board/wiki/wiki.component';
+import { cleanUndefinedFields } from '../utils/object.util';
 
 export interface BoardMember {
   uid: string;
@@ -83,17 +84,8 @@ export class BoardService {
     const members: BoardMember[] = boardSnap.data()['members'] || [];
     const updatedMembers = members.map(m => m.uid === updatedMember.uid ? updatedMember : m);
 
-    const cleanedMembers = updatedMembers.map(m => {
-      const cleaned: any = { ...m };
-      Object.keys(cleaned).forEach(key => {
-        if (cleaned[key] === undefined) {
-          delete cleaned[key];
-        }
-      });
-      return cleaned;
-    });
-
-    await updateDoc(boardRef, { members: updatedMembers });
+    const cleanedMembers = updatedMembers.map(m => cleanUndefinedFields(m) as BoardMember);
+    await updateDoc(boardRef, { members: cleanedMembers });
   }
   /**
    * メンバーの並び替え順序を保存
@@ -106,8 +98,8 @@ export class BoardService {
   }
 
   /**
- * メンバーの役割（admin / member）を更新する
- */
+   * メンバーの役割（admin / member）を更新する
+   */
   async updateMemberRole(boardId: string, targetUid: string, newRole: 'admin' | 'member'): Promise<void> {
     const boardRef = doc(this.firestore, `boards/${boardId}`);
     const { getDoc } = await import('@angular/fire/firestore');
@@ -150,7 +142,7 @@ export class BoardService {
 
     // 自分自身に招待できないようにする
     if (email === currentUser.email) {
-      throw new Error('This user is already invited or is a member of this board');
+      throw new Error('既に招待されているか、メンバーに登録されています。');
     }
 
     // ボードドキュメントを取得して、既存メンバーをチェック
@@ -164,7 +156,7 @@ export class BoardService {
 
       // メンバーのメールアドレスをチェック
       if (members.some(m => m.email === email)) {
-        throw new Error('This user is already invited or is a member of this board');
+        throw new Error('既に招待されているか、メンバーに登録されています。');
       }
     }
 
@@ -174,7 +166,7 @@ export class BoardService {
     const existingDocs = await getDocs(q);
 
     if (!existingDocs.empty) {
-      throw new Error('This user is already invited or is a member of this board');
+      throw new Error('既に招待されているか、メンバーに登録されています。');
     }
 
     const invitationRef = doc(invitationsRef);

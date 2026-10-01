@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Auth } from '@angular/fire/auth';
 import { Task, Subtask, TaskService } from '../task.service';
+import { WikiExportService } from '../../../services/wiki-export.service';
+import { MAX_TAGS } from '../../../utils/constants.util';
 
 @Component({
   selector: 'app-task-edit-modal',
@@ -34,7 +36,7 @@ export class TaskEditModalComponent implements OnChanges {
 
   private auth = inject(Auth);
 
-  constructor(private taskService: TaskService, private cdr: ChangeDetectorRef) { }
+  constructor(private taskService: TaskService, private wikiExportService: WikiExportService, private cdr: ChangeDetectorRef) { }
 
   ngOnChanges(changes: SimpleChanges) {
     // isOpen が false から true に変わったときにだけ初期化処理を実行
@@ -70,7 +72,7 @@ export class TaskEditModalComponent implements OnChanges {
   }
 
   // タグ追加処理（最大5つ制限）
-  addTag() {
+  addTag(): void {
     if (!this.editingTask.tags) {
       this.editingTask.tags = [];
     }
@@ -78,8 +80,8 @@ export class TaskEditModalComponent implements OnChanges {
     const trimmed = this.newTagInput.trim();
     if (!trimmed) return;
 
-    if (this.editingTask.tags.length >= 5) {
-      alert('タグは最大5つまでしか登録できません');
+    if (this.editingTask.tags.length >= MAX_TAGS) {
+      alert(`タグは最大${MAX_TAGS}つまでしか登録できません`);
       return;
     }
 
@@ -90,7 +92,7 @@ export class TaskEditModalComponent implements OnChanges {
   }
 
   // タグ削除処理
-  removeTag(index: number) {
+  removeTag(index: number): void {
     if (this.editingTask.tags) {
       this.editingTask.tags.splice(index, 1);
     }
@@ -246,7 +248,7 @@ export class TaskEditModalComponent implements OnChanges {
   }
 
   // Wikiへの保存処理
-  async exportToWiki() {
+  async exportToWiki(): Promise<void> {
     if (!this.task || !this.boardId) return;
 
     const confirmExport = confirm(
@@ -256,7 +258,7 @@ export class TaskEditModalComponent implements OnChanges {
 
     this.isExportingWiki = true;
     try {
-      await this.taskService.exportTaskToWiki(this.boardId, this.task);
+      await this.wikiExportService.exportTaskToWiki(this.boardId, this.task);
       alert('Wikiにナレッジとして保存しました！「Wiki」タブから確認できます。');
       this.cdr.detectChanges();
     } catch (error: any) {
