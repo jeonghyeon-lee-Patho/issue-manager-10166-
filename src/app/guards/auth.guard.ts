@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { inject } from '@angular/core';
 import { Router, CanActivateFn } from '@angular/router';
 import { Auth, authState } from '@angular/fire/auth';
 import { firstValueFrom } from 'rxjs';
@@ -12,9 +12,8 @@ export const authGuard: CanActivateFn = async (route, state) => {
   const user = await firstValueFrom(authState(auth).pipe(take(1)));
 
   if (user) {
-    return true; // ユーザーがログイン済み → アクセス許可
+    return true;
   } else {
-    // ログインしていない → ログインページにリダイレクト
     router.navigate(['/login'], { queryParams: { returnUrl: state.url } });
     return false;
   }

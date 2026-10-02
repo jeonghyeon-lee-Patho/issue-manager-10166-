@@ -3,7 +3,7 @@ import { Component, Input, OnInit, OnChanges, SimpleChanges, ChangeDetectorRef, 
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Firestore, doc, getDoc, updateDoc, collection, addDoc } from '@angular/fire/firestore';
-import { Task } from '../tasks/task.service';
+import { Task, TaskService, addActivityLog } from '../tasks/task.service';
 import { TaskEditModalComponent } from '../tasks/task-edit-modal/task-edit-modal.component';
 
 interface CalendarDay {
@@ -25,10 +25,16 @@ export class CalendarComponent implements OnInit, OnChanges {
   @Input() columns: string[] = [];
   @Input() boardMembers: string[] = [];
   @Input() currentUserName: string = '';
+  @Input() lastUpdatedAt?: number;
 
   private firestore = inject(Firestore);
   private cdr = inject(ChangeDetectorRef);
+  private taskService = inject(TaskService);
 
+  private operationStartedTaskUpdatedAt?: number;
+  private isDraggingUnscheduled = false;
+
+  showUnscheduledPanel: boolean = false;
   currentDate = new Date(); // 現在表示している月
   calendarDays: CalendarDay[] = [];
   weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -50,6 +56,8 @@ export class CalendarComponent implements OnInit, OnChanges {
   ngOnChanges(changes: SimpleChanges) {
     if (changes['tasks']) {
       this.generateCalendar();
+      this.cdr.markForCheck();
+      this.cdr.detectChanges();
     }
   }
 
@@ -122,13 +130,22 @@ export class CalendarComponent implements OnInit, OnChanges {
   getTasksForDate(date: Date): Task[] {
     const dateStr = this.formatDate(date);
 
-    return this.tasks.filter(t => {
+    const matchedTasks = this.tasks.filter(t => {
       if (!t.dueDate) return false;
-
       const taskDate = new Date(t.dueDate);
-      const taskDateStr = this.formatDate(taskDate);
+      return this.formatDate(taskDate) === dateStr;
+    });
 
-      return taskDateStr === dateStr;
+    return matchedTasks.sort((a, b) => {
+      const aHasTime = !!a.hasTime;
+      const bHasTime = !!b.hasTime;
+
+      // 時間未設定 (--:--) のものは一番下へ
+      if (!aHasTime && !bHasTime) return 0;
+      if (!aHasTime) return 1;
+      if (!bHasTime) return -1;
+
+      return (a.dueDate || 0) - (b.dueDate || 0);
     });
   }
 
@@ -189,63 +206,60 @@ export class CalendarComponent implements OnInit, OnChanges {
   openTaskEdit(task: Task) {
     this.selectedTask = task;
     this.isModalOpen = true;
+    this.operationStartedTaskUpdatedAt = task.updatedAt || task.createdAt || 0;
+    this.cdr.detectChanges();
   }
 
   // モーダルを閉じる
   closeTaskEdit() {
     this.isModalOpen = false;
     this.selectedTask = null;
+    this.cdr.detectChanges();
   }
 
   async saveTask(updatedTask: Task) {
     if (!this.boardId) return;
 
     try {
-      const boardRef = doc(this.firestore, `boards/${this.boardId}`);
-      const snap = await getDoc(boardRef);
-      if (snap.exists()) {
-        const boardData = snap.data();
-        let currentTasks: Task[] = boardData['tasks'] || [];
+      const originalTask = this.tasks.find(t => t.id === updatedTask.id);
+      const oldAssignees = originalTask ? [...(originalTask.assignees || [])] : [];
+      const oldStatus = originalTask?.status || '';
 
-        const originalTask = currentTasks.find(t => t.id === updatedTask.id);
-        const oldAssignees = originalTask ? [...(originalTask.assignees || [])] : [];
-        const oldStatus = originalTask?.status || '';
-
-        // 更新されたタスクで上書き
-        const newTasks = currentTasks.map(t =>
-          t.id === updatedTask.id ? updatedTask : t
-        );
-
-        // タスクから undefined のフィールドを削除してからFirestoreに保存
-        const cleanedTasks = newTasks.map(task => {
-          const cleanedTask: any = { ...task };
-          Object.keys(cleanedTask).forEach(key => {
-            if (cleanedTask[key] === undefined) {
-              delete cleanedTask[key];
-            }
-          });
-          return cleanedTask;
-        });
-
-        await updateDoc(boardRef, { tasks: cleanedTasks });
-
-        let customMsg = `タスク「${updatedTask.title}」の内容がカレンダーから更新されました`;
+      // カレンダーからの変更ログ追加（既存ログがない場合のみ付与）
+      let taskWithLog = { ...updatedTask };
+      if (originalTask) {
+        let logText = 'カレンダーから課題を更新';
         if (oldStatus && oldStatus !== updatedTask.status) {
-          customMsg = `「${updatedTask.title}」のステータスが [${oldStatus}] → [${updatedTask.status}] に変更されました`;
+          logText = `ステータスを [${oldStatus}] → [${updatedTask.status}] に変更`;
         }
-
-        await this.sendTaskNotification(updatedTask, 'update', customMsg, oldAssignees);
-
-        this.closeTaskEdit(); // 保存後に閉じる
-      } else {
-        console.warn('ボードが見つかりません:', this.boardId);
-        alert('ボード情報が見つかりません');
-        return;
+        taskWithLog.activities = addActivityLog(originalTask, this.currentUserName, logText);
       }
+
+      // 精密ロック付き更新処理を呼ぶ
+      await this.taskService.updateSingleTaskWithLock(
+        this.boardId,
+        taskWithLog,
+        this.operationStartedTaskUpdatedAt
+      );
+
+      let customMsg = `タスク「${updatedTask.title}」の内容がカレンダーから更新されました`;
+      if (oldStatus && oldStatus !== updatedTask.status) {
+        customMsg = `「${updatedTask.title}」のステータスが [${oldStatus}] → [${updatedTask.status}] に変更されました`;
+      }
+
+      await this.sendTaskNotification(updatedTask, 'update', customMsg, oldAssignees);
+      this.closeTaskEdit();
       this.cdr.detectChanges();
-    } catch (err) {
-      console.error('Calendar Task Update Error:', err);
-      alert('保存に失敗しました: ' + (err instanceof Error ? err.message : '不明なエラー'));
+    } catch (err: any) {
+      if (err.message === 'TASK_OPTIMISTIC_LOCK_ERROR') {
+        alert('⚠️ このタスクは編集を開始した後に、他のユーザーによって更新されました。\n画面を再読み込みします。');
+        window.location.reload();
+      } else if (err.message === 'COLUMN_NOT_FOUND_OR_CHANGED') {
+        alert('⚠️ タスクが所属するリストが、他のユーザーによって変更または削除されました。\n画面を再読み込みします。');
+        window.location.reload();
+      } else {
+        alert('保存に失敗しました: ' + (err.message || ''));
+      }
     }
   }
 
@@ -310,6 +324,76 @@ export class CalendarComponent implements OnInit, OnChanges {
     } catch (err) {
       console.error('Calendar Notification Send Error:', err);
     }
+  }
+
+  // 期限未設定のタスク一覧を取得
+  toggleUnscheduledPanel() {
+    this.showUnscheduledPanel = !this.showUnscheduledPanel;
+  }
+
+  get unscheduledTasks(): Task[] {
+    return this.tasks.filter(t => !t.dueDate);
+  }
+
+  getUnscheduledTasksByColumn(columnName: string): Task[] {
+    return this.tasks.filter(t => !t.dueDate && t.status === columnName);
+  }
+
+  // サイドパネルからのドラッグ開始
+  onTaskCardClick(task: Task) {
+    if (this.isDraggingUnscheduled) return;
+    this.openTaskEdit(task);
+  }
+
+
+  onUnscheduledDragStart(event: DragEvent, task: Task) {
+    this.isDraggingUnscheduled = true;
+    this.operationStartedTaskUpdatedAt = task.updatedAt || task.createdAt || 0;
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', task.id);
+    }
+  }
+
+  onUnscheduledDragEnd() {
+    setTimeout(() => {
+      this.isDraggingUnscheduled = false;
+    }, 100);
+  }
+
+  onDragOver(event: DragEvent) {
+    event.preventDefault();
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'move'; // ドロップ可能であることを指定
+    }
+  }
+
+  async onDropToDate(event: DragEvent, targetDate: Date) {
+    event.preventDefault();
+    const taskId = event.dataTransfer?.getData('text/plain');
+    if (!taskId) return;
+
+    const task = this.tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    const updatedDueDate = new Date(targetDate).setHours(0, 0, 0, 0);
+    const dateStr = `${targetDate.getMonth() + 1}/${targetDate.getDate()}`;
+    // ログ記録
+    const logText = `期限を [${dateStr}] に設定`;
+    const updatedActivities = addActivityLog(task, this.currentUserName, logText);
+
+    const updatedTask: Task = {
+      ...task,
+      dueDate: updatedDueDate,
+      hasTime: false,
+      activities: updatedActivities,
+      updatedAt: Date.now()
+    };
+
+    // 保存処理の呼び出し
+    await this.saveTask(updatedTask);
+    this.cdr.markForCheck();
+    this.cdr.detectChanges();
   }
 }
 

@@ -1,3 +1,9 @@
+.calendar-wrapper {
+  display: flex;
+  gap: 16px;
+  height: 100%;
+  width: 100%;
+}
 
 .calendar-container {
   display: flex;
@@ -8,6 +14,8 @@
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
   margin: 16px;
   overflow: hidden;
+  flex: 1; /* ★追加：パネルの有無に合わせて横幅が伸縮 */
+  min-width: 600px;
 }
 
 /* ヘッダー */ 
@@ -18,12 +26,15 @@
   padding: 16px 24px;
   border-bottom: 1px solid #e2e8f0;
   background-color: #f8fafc;
+  flex-wrap: nowrap;
+  overflow-x: auto;
 }
 
 .header-left, .header-right {
   display: flex;
+  align-items: center;
   gap: 8px;
-  flex: 1;
+  flex-shrink: 0;
 }
 
 .header-right {
@@ -32,11 +43,10 @@
 
 /* 今月ボタン */
 .btn-today {
-  position: absolute;
-  left: calc(100% + 16px);
-  top: 50%;
-  transform: translateY(-50%); 
-  white-space: nowrap; 
+  position: static;   
+  transform: none;    
+  white-space: nowrap;
+  flex-shrink: 0;     
 
   padding: 6px 12px;
   background-color: white;
@@ -56,13 +66,14 @@
   display: flex;
   justify-content: center;
   align-items: center; 
-  flex: 1;
+  flex-shrink: 0;
 }
 
 .month-center-wrapper {
   position: relative;
   display: flex;
   align-items: center;
+  gap: 12px;
 }
 
 .current-month {
@@ -70,6 +81,8 @@
   font-size: 18px;
   font-weight: 600;
   color: #1e293b;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .current-month.clickable {
@@ -226,6 +239,23 @@
   align-self: flex-start;
 }
 
+.day-cell::-webkit-scrollbar {
+  width: 4px; /* タスク一覧より少し細めにしてすっきり表示 */
+}
+
+.day-cell::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.day-cell::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 2px;
+}
+
+.day-cell::-webkit-scrollbar-thumb:hover {
+  background-color: #94a3b8;
+}
+
 /* タスクの見た目 */
 .task-list {
   display: flex;
@@ -339,4 +369,157 @@
 .btn-save {
   background-color: #3498db;
   color: white;
+}
+
+/* トグルボタンのスタイル */
+.btn-unscheduled-toggle {
+  padding: 6px 12px;
+  background-color: white;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-unscheduled-toggle:hover {
+  background-color: #f1f5f9;
+  border-color: #3b82f6;
+  color: #3b82f6;
+}
+
+.btn-nav,
+.btn-unscheduled-toggle {
+  white-space: nowrap; 
+  flex-shrink: 0;      
+}
+
+.unscheduled-panel {
+  width: 260px;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+  margin: 16px 16px 16px 0;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  animation: slideInRight 0.2s ease;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.panel-header h3 {
+  font-size: 14px;
+  margin: 0;
+  color: #334155;
+}
+
+.btn-close-panel {
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.btn-close-panel:hover {
+  color: #ef4444;
+}
+
+.panel-hint {
+  font-size: 11px;
+  color: #94a3b8;
+  margin: 0 0 12px 0;
+}
+
+.unscheduled-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* リスト（カラム）ごとのグループ背景スタイル */
+.column-group {
+  margin-bottom: 12px;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 8px;
+}
+
+.column-group-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #334155;
+  margin-bottom: 6px;
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 4px;
+}
+
+.group-count {
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.column-group-tasks {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.empty-column-msg {
+  font-size: 11px;
+  color: #cbd5e1;
+  text-align: center;
+  padding: 2px 0;
+}
+
+.unscheduled-task-card {
+  padding: 8px 10px;
+  background-color: white;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: grab;
+  transition: all 0.2s ease;
+}
+
+.unscheduled-task-card:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.empty-msg {
+  font-size: 12px;
+  color: #94a3b8;
+  text-align: center;
+  margin-top: 20px;
 }

@@ -50,11 +50,30 @@
         </div>
       </div>
 
-      <!-- 期限 -->
+      <!-- 期限 (日時指定対応) -->
       <div class="form-group">
-        <label>期限</label>
-        <input type="date" [ngModel]="editingTask.dueDate ? (editingTask.dueDate | date:'yyyy-MM-dd') : ''"
-          (ngModelChange)="setDueDate($event)" class="form-control" />
+        <div class="label-row">
+          <label>期限</label>
+        </div>
+
+        <div class="date-time-wrapper">
+          <!-- 日付入力 -->
+          <div class="input-box">
+            <input type="date" [ngModel]="getDateString(editingTask.dueDate)" (ngModelChange)="onDateChange($event)"
+              class="form-control date-input" />
+          </div>
+
+          <!-- 時間入力（クリアボタン付き） -->
+          <div class="input-box">
+            <input type="time" [ngModel]="getTimeString(editingTask.dueDate)" (ngModelChange)="onTimeChange($event)"
+              class="form-control time-input" [disabled]="!editingTask.dueDate" />
+            <!-- 入力枠の右外側に配置 -->
+            <button *ngIf="getTimeString(editingTask.dueDate)" type="button" class="btn-clear-time"
+              (click)="clearTimeOnly()" title="時間指定を解除">
+              ✕
+            </button>
+          </div>
+        </div>
       </div>
 
       <!-- 担当者 -->
@@ -157,6 +176,32 @@
           </div>
         </div>
       </div>
+
+      <!-- アクティビティ履歴 (タイムライン表示) -->
+      <div class="form-group activity-section" *ngIf="!isNewTask()">
+        <label>
+          <strong>アクティビティ履歴</strong>
+          <small class="hint-text">（操作ログ）</small>
+        </label>
+
+        <div class="activity-list" *ngIf="editingTask.activities && editingTask.activities.length > 0">
+          <div *ngFor="let act of editingTask.activities" class="activity-item">
+            <div class="activity-icon">🕒</div>
+            <div class="activity-content">
+              <div class="activity-header">
+                <strong class="activity-user">{{ act.user }}</strong>
+                <span class="activity-action">{{ act.action }}</span>
+              </div>
+              <small class="activity-time">{{ act.timestamp | date:'yyyy/MM/dd HH:mm' }}</small>
+            </div>
+          </div>
+        </div>
+
+        <div *ngIf="!editingTask.activities || editingTask.activities.length === 0" class="empty-activity">
+          まだ履歴はありません
+        </div>
+      </div>
+
     </div>
 
     <div class="modal-footer">

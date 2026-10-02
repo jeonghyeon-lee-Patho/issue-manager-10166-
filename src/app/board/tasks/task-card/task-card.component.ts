@@ -125,4 +125,8 @@ export class TaskCardComponent {
     const updatedTask = { ...this.task, subtasks: updatedSubtasks };
     this.updateTask.emit(updatedTask);
   }
+
+  hasTime(task: Task): boolean {
+    return !!task.hasTime && !!task.dueDate;
+  }
 }

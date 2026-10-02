@@ -26,7 +26,7 @@ export class MembersComponent implements OnInit {
   inviteEmail = '';
   inviteError = '';
 
-  //// 編集用状態変数
+  // 編集用状態変数
   editingUid: string | null = null;
   editingPosition: string = '';         // 1. 役職 (例: フロントエンド / リーダー)
   editingDomain: string = '';           // 2. 担当領域 (例: Angular / UIデザイン)
@@ -34,7 +34,7 @@ export class MembersComponent implements OnInit {
   editingContactId: string = '';        // 4. Slack/連絡先ID (例: @tanaka_dev)
   draggedMemberUid: string | null = null;
   draggedMemberIndex: number | null = null;
-  ////
+
   private boardService = inject(BoardService);
   private auth = inject(Auth);
   private firestore = inject(Firestore);
@@ -178,7 +178,7 @@ export class MembersComponent implements OnInit {
     return this.members.some(m => m.uid === this.currentUserUid);
   }
 
-  //// 自分の情報の編集を開始
+  // 自分の情報の編集を開始
   startEdit(member: BoardMember) {
     if (member.uid !== this.currentUserUid) return; // 自分の情報以外は拒否
     this.editingUid = member.uid;
@@ -188,7 +188,7 @@ export class MembersComponent implements OnInit {
     this.editingContactId = member.contactId || '';
   }
 
-  //// 編集をキャンセル
+  // 編集をキャンセル
   cancelEdit() {
     this.editingUid = null;
     this.editingPosition = '';
@@ -197,7 +197,7 @@ export class MembersComponent implements OnInit {
     this.editingContactId = '';
   }
 
-  //// プロフィール変更を保存
+  // プロフィール変更を保存
   async saveMemberProfile(member: BoardMember) {
     if (member.uid !== this.currentUserUid || !this.boardId) return;
 
@@ -225,7 +225,7 @@ export class MembersComponent implements OnInit {
       alert('プロフィールの更新に失敗しました: ' + (error.message || ''));
     }
   }
-  ////
+
   /**
    * 招待モーダルを開く
    */

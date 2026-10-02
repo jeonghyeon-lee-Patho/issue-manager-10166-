@@ -1,8 +1,7 @@
-import { Injectable, inject } from '@angular/core';
-import { Router, CanActivateFn, ActivatedRouteSnapshot } from '@angular/router';
+import { inject } from '@angular/core';
+import { Router, CanActivateFn } from '@angular/router';
 import { Firestore, doc, getDoc } from '@angular/fire/firestore';
 import { Auth } from '@angular/fire/auth';
-import { firstValueFrom } from 'rxjs';
 
 export const boardAccessGuard: CanActivateFn = async (route, state) => {
   const firestore = inject(Firestore);

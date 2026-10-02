@@ -133,6 +133,10 @@
   margin-bottom: 6px;
 }
 
+.form-group input {
+  margin-bottom: 4px;
+}
+
 .required {
   color: #e74c3c;
   font-weight: bold;
@@ -438,6 +442,91 @@ textarea.form-control {
   cursor: not-allowed;
 }
 
+/* ================== アクティビティ履歴 ================== */
+.activity-section {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #ecf0f1;
+}
+
+.activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 180px;
+  overflow-y: auto;
+  padding: 8px 12px;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+}
+
+.activity-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.activity-list::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 2px;
+}
+
+.activity-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 12px;
+  padding: 6px 0;
+  border-bottom: 1px dashed #e2e8f0;
+}
+
+.activity-item:last-child {
+  border-bottom: none;
+}
+
+.activity-icon {
+  font-size: 13px;
+  line-height: 1.4;
+  flex-shrink: 0;
+}
+
+.activity-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.activity-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.activity-user {
+  color: #1e293b;
+  font-weight: 600;
+}
+
+.activity-action {
+  color: #475569;
+}
+
+.activity-time {
+  font-size: 10px;
+  color: #94a3b8;
+}
+
+.empty-activity {
+  font-size: 12px;
+  color: #94a3b8;
+  padding: 12px;
+  text-align: center;
+  background-color: #f8fafc;
+  border-radius: 6px;
+  border: 1px dashed #e2e8f0;
+}
+
 /* ボタン */
 .btn-small {
   padding: 4px 8px;
@@ -506,6 +595,84 @@ textarea.form-control {
   background-color: #229954;
 }
 
+.label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+/* 横並びにして幅を統一 */
+.date-time-wrapper {
+  display: flex;
+  gap: 8px;
+}
+
+.input-box {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+/* 高さ・フォント・余白をピッタリ統一 */
+.date-input,
+.time-input {
+  width: 100%;
+  height: 38px;
+  padding: 8px 10px;
+  box-sizing: border-box;
+  font-size: 13px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+}
+
+/* ブラウザの標準アイコンの右余白を統一して位置を揃える */
+.date-input::-webkit-calendar-picker-indicator,
+.time-input::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  padding: 0;
+  margin-right: 2px;
+}
+
+.btn-clear-time {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid #cbd5e1;
+  background-color: #f8fafc;
+  color: #64748b;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+  padding: 0;
+  margin-left: 6px;
+}
+
+.btn-clear-time:hover {
+  background-color: #fee2e2;
+  border-color: #fca5a5;
+  color: #ef4444;
+  transform: scale(1.05);
+}
+
+.date-time-inputs {
+  display: flex;
+  gap: 8px;
+}
+
+.date-time-inputs input[type="date"] {
+  flex: 2;
+}
+
+.date-time-inputs input[type="time"] {
+  flex: 1;
+}
+
 /* 担当者選択 */
 .assignees-list {
   display: flex;
@@ -552,6 +719,7 @@ textarea.form-control {
   border-radius: 4px;
   font-size: 12px;
   color: #2c3e50;
+  margin-top: -4px;
 }
 
 .btn-remove-assignee {
@@ -592,6 +760,7 @@ textarea.form-control {
   align-items: center;
   gap: 4px;
   font-weight: 500;
+  margin-top: -6px;
 }
 
 .btn-remove-tag {

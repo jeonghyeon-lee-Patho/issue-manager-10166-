@@ -5,6 +5,7 @@ import { Auth } from '@angular/fire/auth';
 import { Task, Subtask, TaskService } from '../task.service';
 import { WikiExportService } from '../../../services/wiki-export.service';
 import { MAX_TAGS } from '../../../utils/constants.util';
+import { formatToDatetimeLocal, parseDatetimeLocal } from '../../../utils/date.util';
 
 @Component({
   selector: 'app-task-edit-modal',
@@ -46,7 +47,6 @@ export class TaskEditModalComponent implements OnChanges {
         // 編集モード
         this.editingTask = {
           ...this.task,
-          ////tags: this.task.tags ? [...this.task.tags] : []
           assignees: this.task.assignees ? [...this.task.assignees] : [],
           tags: this.task.tags ? [...this.task.tags] : [],
           subtasks: this.task.subtasks ? this.task.subtasks.map(s => ({ ...s })) : [],
@@ -112,6 +112,23 @@ export class TaskEditModalComponent implements OnChanges {
       case 'medium': return '中';
       case 'low': return '低';
       default: return '';
+    }
+  }
+
+  // input[type="datetime-local"] 表示用
+  getDateTimeLocalString(dueDate?: number): string {
+    return formatToDatetimeLocal(dueDate);
+  }
+
+  // input[type="datetime-local"] からの入力イベント処理
+  setDueDateFromInput(datetimeStr: string) {
+    if (datetimeStr) {
+      this.editingTask.dueDate = new Date(datetimeStr).getTime();
+      // YYYY-MM-DDTHH:mm の形式（時間が含まれている）なら hasTime を true にする
+      this.editingTask.hasTime = datetimeStr.includes('T');
+    } else {
+      this.editingTask.dueDate = undefined;
+      this.editingTask.hasTime = false;
     }
   }
 
@@ -210,6 +227,7 @@ export class TaskEditModalComponent implements OnChanges {
       status: this.editingTask.status || '',
       priority: this.editingTask.priority,
       dueDate: this.editingTask.dueDate,
+      hasTime: this.editingTask.hasTime || false,
       description: this.editingTask.description || '',
       subtasks: this.editingTask.subtasks || [],
       comments: this.editingTask.comments || [],
@@ -268,5 +286,63 @@ export class TaskEditModalComponent implements OnChanges {
       this.cdr.detectChanges();
     }
   }
+
+  // 日付文字列 (YYYY-MM-DD) を取得
+  getDateString(dueDate?: number): string {
+    if (!dueDate) return '';
+    const date = new Date(dueDate);
+    const pad = (n: number) => (n < 10 ? '0' + n : n);
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  }
+
+  // 時間文字列 (HH:mm) を取得（00:00の場合は空文字）
+  /*
+  getTimeString(dueDate?: number): string {
+    if (!dueDate) return '';
+    const date = new Date(dueDate);
+    if (date.getHours() === 0 && date.getMinutes() === 0) return '';
+    const pad = (n: number) => (n < 10 ? '0' + n : n);
+    return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  }
+    */
+  getTimeString(dueDate?: number): string {
+    if (!dueDate || !this.editingTask.hasTime) return '';
+    const date = new Date(dueDate);
+    const pad = (n: number) => (n < 10 ? '0' + n : n);
+    return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  } 
+
+  // 日付が変更された時
+  onDateChange(dateStr: string) {
+    if (!dateStr) {
+      this.editingTask.dueDate = undefined;
+      this.editingTask.hasTime = false;
+      return;
+    }
+    const currentTimeStr = this.getTimeString(this.editingTask.dueDate);
+    const timeStr = currentTimeStr ? `T${currentTimeStr}` : 'T00:00';
+    this.editingTask.dueDate = new Date(`${dateStr}${timeStr}`).getTime();
+  }
+
+  // 時間が変更された時
+  onTimeChange(timeStr: string) {
+    const currentDateStr = this.getDateString(this.editingTask.dueDate);
+    if (!currentDateStr) return;
+
+    if (timeStr) {
+      this.editingTask.dueDate = new Date(`${currentDateStr}T${timeStr}`).getTime();
+      this.editingTask.hasTime = true; 
+    } else {
+      this.editingTask.dueDate = new Date(`${currentDateStr}T00:00`).getTime();
+      this.editingTask.hasTime = false; 
+    }
+  }
+
+  // 時間のみを解除（日付はそのまま、時間を00:00指定なしに戻す）
+  clearTimeOnly(): void {
+    const currentDateStr = this.getDateString(this.editingTask.dueDate);
+    if (!currentDateStr) return;
+    this.editingTask.dueDate = new Date(`${currentDateStr}T00:00`).getTime();
+    this.editingTask.hasTime = false;
+  }
 }
- 

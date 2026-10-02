@@ -241,6 +241,37 @@
   white-space: nowrap;
 }
 
+.due-date-box {
+  display: flex;
+  flex-direction: column; 
+  align-items: flex-end;  
+  line-height: 1.2;
+}
+
+.due-date-day {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.due-date-time {
+  font-size: 10px;
+  color: #64748b;
+}
+
+.due-date-container {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end; /* 全体を右側に寄せる */
+}
+
+.due-date-line {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: #64748b;
+}
+
 /* ディスクリプション */
 .task-description {
   margin-bottom: 6px;

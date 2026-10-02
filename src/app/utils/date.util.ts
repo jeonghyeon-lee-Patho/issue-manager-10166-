@@ -112,3 +112,41 @@ export function formatDateTimeToJP(timestamp: number): string {
     minute: '2-digit'
   });
 }
+
+/**
+ * タイムスタンプを <input type="datetime-local"> 用のフォーマット (YYYY-MM-DDTHH:mm) に変換
+ */
+export function formatToDatetimeLocal(timestamp?: number): string {
+  if (!timestamp) return '';
+  const date = new Date(timestamp);
+  const pad = (n: number) => (n < 10 ? '0' + n : n);
+  const y = date.getFullYear();
+  const m = pad(date.getMonth() + 1);
+  const d = pad(date.getDate());
+  const hh = pad(date.getHours());
+  const mm = pad(date.getMinutes());
+  return `${y}-${m}-${d}T${hh}:${mm}`;
+}
+
+/**
+ * <input type="datetime-local"> の入力値 (YYYY-MM-DDTHH:mm) をタイムスタンプ (ミリ秒) に変換
+ */
+export function parseDatetimeLocal(datetimeStr: string): number | undefined {
+  if (!datetimeStr) return undefined;
+  const time = new Date(datetimeStr).getTime();
+  return isNaN(time) ? undefined : time;
+}
+
+/**
+ * タイムスタンプを "MM/DD HH:mm" や "HH:mm" の形式にフォーマット
+ */
+export function formatTimeShort(timestamp?: number): string {
+  if (!timestamp) return '';
+  const date = new Date(timestamp);
+  const pad = (n: number) => (n < 10 ? '0' + n : n);
+  const m = pad(date.getMonth() + 1);
+  const d = pad(date.getDate());
+  const hh = pad(date.getHours());
+  const mm = pad(date.getMinutes());
+  return `${m}/${d} ${hh}:${mm}`;
+}

@@ -5,22 +5,15 @@
     <!-- 左側：タイトル -->
     <div class="task-left">
       <div class="task-header">
-        <!-- タイトル編集モード --> 
+        <!-- タイトル編集モード -->
         <div *ngIf="isEditingTitle" class="title-edit-mode" (click)="$event.stopPropagation()"
           (mousedown)="$event.stopPropagation()">
-          <input type="text" 
-            [(ngModel)]="editingTitle" 
-            maxlength="100"
-            class="title-input" 
-            draggable="false"
-            (keyup.enter)="saveTitle()"
-            (keyup.escape)="cancelEditTitle($event)" 
-            (blur)="saveTitle()"
-            (mousedown)="$event.stopPropagation()" 
-            (dragstart)="$event.stopPropagation()"
+          <input type="text" [(ngModel)]="editingTitle" maxlength="100" class="title-input" draggable="false"
+            (keyup.enter)="saveTitle()" (keyup.escape)="cancelEditTitle($event)" (blur)="saveTitle()"
+            (mousedown)="$event.stopPropagation()" (dragstart)="$event.stopPropagation()"
             (dragover)="$event.preventDefault()" />
         </div>
-        <!-- 通常表示 --> 
+        <!-- 通常表示 -->
         <p *ngIf="!isEditingTitle" class="task-title" [title]="task.title">
           {{ task.title }}
         </p>
@@ -99,9 +92,14 @@
           {{ getDueDateLabel(task.dueDate) }}
         </div>
 
-        <div *ngIf="task.dueDate" class="due-date-row">
-          <i class="far fa-clock"></i>
-          <span class="due-date-text">{{ task.dueDate | date:'yyyy/MM/dd' }}</span>
+        <div *ngIf="task.dueDate" class="due-date-container">
+          <div class="due-date-line">
+            <i class="far fa-clock"></i>
+            <span>{{ task.dueDate | date:'yyyy/MM/dd' }}</span>
+          </div>
+          <div *ngIf="hasTime(task)" class="due-date-line">
+            <span>{{ task.dueDate | date:'HH:mm' }}</span>
+          </div>
         </div>
 
         <div *ngIf="task.tags && task.tags.length > 0" class="task-tags-container">

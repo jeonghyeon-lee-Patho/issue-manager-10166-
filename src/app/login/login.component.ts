@@ -18,7 +18,6 @@ export class LoginComponent implements OnInit {
   password = '';
   isSignUp = false;
   authError = '';
-  ////
   currentUserForVerification: User | null = null;
   showResendLink = false;
   showPassword = false;

@@ -65,6 +65,8 @@ export class BoardComponent implements OnInit, OnDestroy, OnChanges {
   showNotifications: boolean = false;
   isAdmin: boolean = false;
   isProcessingNameSave = false;
+  lastUpdatedAt: number = 0;
+
   private noticeUnsub?: Unsubscribe;
   private unreadUnsub?: Unsubscribe;
 
@@ -92,7 +94,6 @@ export class BoardComponent implements OnInit, OnDestroy, OnChanges {
           if (docSnap.exists()) {
             const data = docSnap.data();
             
-            // 【追加】ボードから追放されたかチェック
             const currentUserUid = this.auth.currentUser?.uid;
             if (currentUserUid && !data['memberUids']?.includes(currentUserUid)) {
               alert('このボードから削除されています。');
@@ -100,6 +101,9 @@ export class BoardComponent implements OnInit, OnDestroy, OnChanges {
               return;
             }
             
+            // ★ Firestoreの最新タイムスタンプを保持
+            this.lastUpdatedAt = data['lastUpdatedAt'] || data['createdAt'] || 0;
+
             this.boardName = data['name'] || this.boardId;
             this.columns = data['columns'] || ['To Do', 'In Progress', 'In Review', 'Done'];
             this.tasks = data['tasks'] || [];
@@ -241,7 +245,7 @@ export class BoardComponent implements OnInit, OnDestroy, OnChanges {
       noticesRef,
       where('targetUser', 'in', [this.currentUserName, 'ALL']),
       orderBy('createdAt', 'desc'),
-      limit(10)
+      limit(15)
     );
 
     this.noticeUnsub = onSnapshot(q, (snapshot) => {
@@ -482,6 +486,13 @@ export class BoardComponent implements OnInit, OnDestroy, OnChanges {
           updatedTask.assignees = task.assignees.map(assignee =>
             assignee === oldUserName ? newUserName : assignee
           );
+        }
+
+        if (task.activities && task.activities.length > 0) {
+          updatedTask.activities = task.activities.map(act => ({
+            ...act,
+            user: act.user === oldUserName ? newUserName : act.user
+          }));
         }
         return updatedTask;
       });

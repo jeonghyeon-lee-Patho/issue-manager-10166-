@@ -1,10 +1,9 @@
 import { Component, Input, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Task, TaskService } from './task.service';
+import { Task, TaskService, TaskActivity, addActivityLog, generateTaskDiffLog } from './task.service';
 import { TaskCardComponent } from './task-card/task-card.component';
 import { TaskEditModalComponent } from './task-edit-modal/task-edit-modal.component';
-import { Firestore, collection, addDoc } from '@angular/fire/firestore';
 import { NotificationService } from '../../services/notification.service';
 import { toggleArrayValue } from '../../utils/object.util';
 
@@ -21,6 +20,7 @@ export class TasksComponent {
   @Input() tasks: Task[] = [];
   @Input() currentUserName: string = 'User';  // ボード内のユーザー名
   @Input() boardMembers: string[] = [];  // ボードのメンバー一覧
+  @Input() lastUpdatedAt?: number;
 
   newTaskTitleByColumn: { [key: string]: string } = {};
   newColumnName: string = '';
@@ -65,10 +65,10 @@ export class TasksComponent {
   tempSortKey: 'none' | 'title' | 'priority' | 'dueDate' = 'none';
   tempSortOrder: 'asc' | 'desc' = 'asc';
   showSortPanel: boolean = false;
+  private operationStartedTaskUpdatedAt?: number;
 
   private cdr = inject(ChangeDetectorRef);
   private taskService = inject(TaskService);
-  private firestore = inject(Firestore);
   private notificationService = inject(NotificationService);
 
   getTasksByColumn(columnName: string): Task[] {
@@ -232,8 +232,19 @@ export class TasksComponent {
       // 標準（昇順）は 高 -> 中 -> 低
       comparison = rankB - rankA;
     } else if (this.sortKey === 'dueDate') {
-      // 標準（昇順）は 日付が古い（期限が近い）順
-      comparison = (a.dueDate || 0) - (b.dueDate || 0);
+      const aDate = new Date(a.dueDate!).setHours(0, 0, 0, 0);
+      const bDate = new Date(b.dueDate!).setHours(0, 0, 0, 0);
+
+      if (aDate === bDate) {
+        const aHasTime = !!a.hasTime;
+        const bHasTime = !!b.hasTime;
+
+        if (!aHasTime && bHasTime) comparison = 1;
+        else if (aHasTime && !bHasTime) comparison = -1;
+        else comparison = (a.dueDate || 0) - (b.dueDate || 0);
+      } else {
+        comparison = (a.dueDate || 0) - (b.dueDate || 0);
+      }
     }
 
     // 3. 降順（desc）の場合は比較結果を反転
@@ -247,6 +258,30 @@ export class TasksComponent {
 
   // ========== タスク管理 ==========
 
+  private async safeSave(updatedColumns: string[], updatedTasks: Task[], expectedTime?: number): Promise<boolean> {
+    try {
+      const newTimestamp = await this.taskService.saveToFirestore(
+        this.boardId,
+        updatedColumns,
+        updatedTasks,
+        this.lastUpdatedAt
+      );
+      this.lastUpdatedAt = newTimestamp;
+      this.columns = updatedColumns;
+      this.tasks = updatedTasks;
+      this.cdr.detectChanges();
+      return true;
+    } catch (err: any) {
+      if (err.message === 'OPTIMISTIC_LOCK_ERROR') {
+        alert('⚠️ 他のユーザーがこのボードの内容を更新しました。\n最新のデータと同期するため、画面を再読み込みします。');
+        window.location.reload(); // 衝突時に画面を再読み込みして最新化
+      } else {
+        alert('保存に失敗しました');
+      }
+      return false;
+    }
+  }
+
   async addTask(columnName: string) {
     const taskTitle = this.newTaskTitleByColumn[columnName];
     if (!taskTitle?.trim() || !this.boardId?.trim()) return;
@@ -257,31 +292,33 @@ export class TasksComponent {
       columnName
     );
 
-    try {
-      const updatedTasks = [...this.tasks, newTask];
-      await this.taskService.saveToFirestore(this.boardId, this.columns, updatedTasks);
-      this.tasks = updatedTasks;
+    const updatedTasks = [...this.tasks, newTask];
+    const success = await this.safeSave(this.columns, updatedTasks); // ★差し替え
+    if (success) {
       this.newTaskTitleByColumn[columnName] = '';
       this.showAddTaskInput[columnName] = false;
-
       await this.notificationService.sendTaskNotifications(this.boardId, newTask, 'create', this.currentUserName);
-      this.cdr.detectChanges();
-    } catch (err) {
-      console.error('Task creation error:', err);
-      alert('タスクの作成に失敗しました');
     }
+    this.cdr.detectChanges();
   }
 
   async moveTask(task: Task, newStatus: string) {
     if (!this.boardId?.trim()) return;
 
-    try {
-      const oldStatus = task.status;
-      const updatedTasks = this.taskService.updateTaskStatus(this.tasks, task.id, newStatus);
-      await this.taskService.saveToFirestore(this.boardId, this.columns, updatedTasks);
-      this.tasks = updatedTasks;
+    const oldStatus = task.status;
+    if (oldStatus === newStatus) return;
 
-      const movedTask: Task = { ...task, status: newStatus };
+    const logText = `ステータスを [${oldStatus}] → [${newStatus}] に変更`;
+    const updatedActivities = addActivityLog(task, this.currentUserName, logText);
+    const movedTask: Task = { ...task, status: newStatus, activities: updatedActivities, updatedAt: Date.now() };
+
+    try {
+      await this.taskService.updateSingleTaskWithLock(
+        this.boardId,
+        movedTask,
+        this.operationStartedTaskUpdatedAt
+      );
+
       await this.notificationService.sendTaskNotifications(
         this.boardId,
         movedTask,
@@ -292,38 +329,28 @@ export class TasksComponent {
       );
       this.cdr.detectChanges();
     } catch (err) {
-      console.error('Task move error:', err);
-      alert('タスクの移動に失敗しました');
+      this.handleSingleTaskError(err);
     }
   }
 
   async deleteTask(taskId: string) {
     if (!this.boardId?.trim()) return;
-
     const targetTask = this.tasks.find(t => t.id === taskId);
-
     if (!confirm('この課題を削除しますか？')) {
       return;
     }
 
-    try {
-      const updatedTasks = this.taskService.deleteTask(this.tasks, taskId);
-      await this.taskService.saveToFirestore(this.boardId, this.columns, updatedTasks);
-      this.tasks = updatedTasks;
+    const updatedTasks = this.taskService.deleteTask(this.tasks, taskId);
+    const success = await this.safeSave(this.columns, updatedTasks); // ★差し替え
 
-      if (targetTask) {
-        await this.notificationService.sendTaskNotifications(this.boardId, targetTask, 'delete', this.currentUserName);
-      }
-      this.cdr.detectChanges();
-    } catch (err) {
-      console.error('Task deletion error:', err);
-      alert('タスクの削除に失敗しました');
+    if (success && targetTask) {
+      await this.notificationService.sendTaskNotifications(this.boardId, targetTask, 'delete', this.currentUserName);
     }
+    this.cdr.detectChanges();
   }
 
   async addColumn() {
     if (!this.newColumnName.trim() || !this.boardId) return;
-
     const trimmedName = this.newColumnName.trim();
     if (this.columns.includes(trimmedName)) {
       alert('同じ名前のリストが既に存在します。');
@@ -331,26 +358,23 @@ export class TasksComponent {
     }
 
     const updatedColumns = [...this.columns, trimmedName];
-    await this.taskService.saveToFirestore(this.boardId, updatedColumns, this.tasks);
-    this.columns = updatedColumns;
-    this.newColumnName = '';
-    this.showAddColumnInput = false;
+    const success = await this.safeSave(updatedColumns, this.tasks);
+    if (success) {
+      this.newColumnName = '';
+      this.showAddColumnInput = false;
+    }
     this.cdr.detectChanges();
   }
 
   async deleteColumn(columnName: string) {
     if (!this.boardId) return;
-
     if (!confirm(`リスト「${columnName}」を削除しますか？このリストに含まれるすべての課題も削除されます。`)) {
       return;
     }
 
     const updatedColumns = this.columns.filter(c => c !== columnName);
     const updatedTasks = this.tasks.filter(t => t.status !== columnName);
-    await this.taskService.saveToFirestore(this.boardId, updatedColumns, updatedTasks);
-    this.columns = updatedColumns;
-    this.tasks = updatedTasks;
-    this.cdr.detectChanges();
+    await this.safeSave(updatedColumns, updatedTasks);
   }
 
   // ========== リスト名編集機能 ==========
@@ -367,7 +391,6 @@ export class TasksComponent {
     }
 
     const newColumnName = this.editingColumnNewName.trim();
-
     if (newColumnName === oldColumnName) {
       this.editingColumnName = null;
       return;
@@ -378,21 +401,13 @@ export class TasksComponent {
       return;
     }
 
-    // カラム名を更新
     const updatedColumns = this.columns.map(c => c === oldColumnName ? newColumnName : c);
+    const updatedTasks = this.tasks.map(t => t.status === oldColumnName ? { ...t, status: newColumnName } : t);
 
-    // 対応するタスクのstatusも更新
-    const updatedTasks = this.tasks.map(t => {
-      if (t.status === oldColumnName) {
-        return { ...t, status: newColumnName };
-      }
-      return t;
-    });
-
-    await this.taskService.saveToFirestore(this.boardId, updatedColumns, updatedTasks);
-    this.columns = updatedColumns;
-    this.tasks = updatedTasks;
-    this.editingColumnName = null;
+    const success = await this.safeSave(updatedColumns, updatedTasks);
+    if (success) {
+      this.editingColumnName = null;
+    }
     this.cdr.detectChanges();
   }
 
@@ -423,6 +438,7 @@ export class TasksComponent {
   onCardDragStart(task: Task) {
     this.draggedTask = task;
     this.draggedFromColumn = task.status;
+    this.operationStartedTaskUpdatedAt = task.updatedAt || task.createdAt || 0;
   }
 
   onCardDragEnd() {
@@ -478,9 +494,12 @@ export class TasksComponent {
     newColumns.splice(toIndex, 0, movedColumn);
 
     // Firestoreに保存
+    /*
     await this.taskService.saveToFirestore(this.boardId, newColumns, this.tasks);
     this.columns = newColumns;
     this.cdr.detectChanges();
+    */
+    await this.safeSave(newColumns, this.tasks);
   }
 
   // ========== 編集機能 ==========
@@ -488,9 +507,9 @@ export class TasksComponent {
   openEditModal(task: Task) {
     this.editingTask = { ...task };
     this.editingTaskId = task.id;
-    ////
     this.originalAssignees = task.assignees ? [...task.assignees] : [];
     this.isEditModalOpen = true;
+    this.operationStartedTaskUpdatedAt = task.updatedAt || task.createdAt || 0;
   }
 
   openCreateModal(columnName: string) {
@@ -498,6 +517,7 @@ export class TasksComponent {
     this.editingTask = null;
     (this as any).defaultCreateColumn = columnName;
     this.isEditModalOpen = true;
+    this.operationStartedTaskUpdatedAt = undefined;
     this.cdr.detectChanges();
   }
 
@@ -513,52 +533,62 @@ export class TasksComponent {
 
     try {
       const isNew = !this.editingTaskId;
-
-      // 編集前タスクの担当者リストを取得しておく
       const oldAssignees = isNew ? [] : [...this.originalAssignees];
-      ////
       const originalTask = this.tasks.find(t => t.id === this.editingTaskId);
-      const oldStatus = originalTask?.status || '';
 
-      const taskToSave: Task = {
-        ...task,
-        assignees: task.assignees || []
-      };
-
-      if (this.editingTaskId) {
-        const updatedTasks = this.taskService.updateTask(this.tasks, taskToSave);
-        await this.taskService.saveToFirestore(this.boardId, this.columns, updatedTasks);
-        this.tasks = updatedTasks;
-
-        let customMsg = `タスク「${taskToSave.title}」の内容が更新されました`;
-        if (oldStatus && oldStatus !== taskToSave.status) {
-          customMsg = `「${taskToSave.title}」のステータスが [${oldStatus}] → [${taskToSave.status}] に変更されました`;
-        }
-
-        await this.sendTaskNotification(
-          taskToSave,
-          'update',
-          customMsg,
-          oldAssignees
-        );
-      } else {
-        const newTask: Task = {
-          ...taskToSave,
-          id: taskToSave.id || Date.now().toString(),
-          createdAt: taskToSave.createdAt || Date.now(),
+      if (this.editingTaskId && originalTask) {
+        const logText = generateTaskDiffLog(originalTask, task);
+        const updatedActivities = addActivityLog(originalTask, this.currentUserName, logText);
+        
+        const taskToSave: Task = {
+          ...task,
+          assignees: task.assignees || [],
+          activities: updatedActivities,
           updatedAt: Date.now()
         };
-        const updatedTasks = [...this.tasks, newTask];
-        await this.taskService.saveToFirestore(this.boardId, this.columns, updatedTasks);
-        this.tasks = updatedTasks;
 
-        await this.sendTaskNotification(newTask, 'create');
+        try {
+          await this.taskService.updateSingleTaskWithLock(
+            this.boardId,
+            taskToSave,
+            this.operationStartedTaskUpdatedAt
+          );
+
+          await this.sendTaskNotification(taskToSave, 'update', `タスク「${taskToSave.title}」が更新されました`, oldAssignees);
+        } catch (err) {
+          this.handleSingleTaskError(err);
+          return;
+        }
+      } else {
+        const initialTask: Task = {
+          ...task,
+          assignees: task.assignees || [],
+          activities: []
+        };
+        const createdActivities = addActivityLog(initialTask, this.currentUserName, '課題を作成');
+
+        const newTask: Task = {
+          ...initialTask,
+          id: initialTask.id || Date.now().toString(),
+          activities: createdActivities,
+          createdAt: Date.now(),
+          updatedAt: Date.now()
+        };
+
+        try {
+          await this.taskService.updateSingleTaskWithLock(this.boardId, newTask);
+          await this.sendTaskNotification(newTask, 'create');
+        } catch (err) {
+          this.handleSingleTaskError(err);
+          return;
+        }
       }
     } finally {
       this.closeEditModal();
       this.cdr.detectChanges();
     }
   }
+
   // ハンドラーメソッド（テンプレートから呼び出し）
   onTaskCardStatusChange(event: { task: Task; newStatus: string }) {
     this.moveTask(event.task, event.newStatus);
@@ -568,23 +598,33 @@ export class TasksComponent {
   async updateTaskTitle(event: { id: string; title: string }) {
     if (!this.boardId) return;
 
-    let targetTask: Task | undefined;
+    const targetTask = this.tasks.find(t => t.id === event.id);
+    if (!targetTask || targetTask.title === event.title) return;
+    const oldTitle = targetTask.title;
+    const newTitle = event.title;
 
-    const updatedTasks = this.tasks.map(t => {
-      if (t.id === event.id) {
-        targetTask = { ...t, title: event.title, updatedAt: Date.now() };
-        return targetTask;
-      }
-      return t;
-    });
+    // タイトル変更の具体的ログを生成
+    const logText = `タイトルを「${oldTitle}」→「${newTitle}」に変更`;
+    const updatedActivities = addActivityLog(targetTask, this.currentUserName, logText);
 
-    await this.taskService.saveToFirestore(this.boardId, this.columns, updatedTasks);
-    this.tasks = updatedTasks;
+    const updatedTask: Task = {
+      ...targetTask,
+      title: newTitle,
+      activities: updatedActivities,
+      updatedAt: Date.now()
+    };
 
-    if (targetTask) {
-      await this.sendTaskNotification(targetTask, false);
+    try {
+      await this.taskService.updateSingleTaskWithLock(this.boardId, updatedTask);
+      await this.sendTaskNotification(
+        updatedTask, 
+        'update', 
+        `タスクのタイトルが「${oldTitle}」から「${newTitle}」に変更されました`
+      );
+      this.cdr.detectChanges();
+    } catch (err) {
+      this.handleSingleTaskError(err);
     }
-    this.cdr.detectChanges();
   }
 
   async saveTaskUpdate(task: Task) {
@@ -627,7 +667,6 @@ export class TasksComponent {
       this.tempStatusFilter = [...this.statusFilter];
       this.tempPriorityFilter = [...this.priorityFilter];
       this.tempAssigneeFilter = [...this.assigneeFilter];
-      ////
       this.tempDueDateFilter = this.dueDateFilter;
     }
   }
@@ -680,7 +719,6 @@ export class TasksComponent {
   toggleTempAssigneeFilter(value: string): void {
     this.tempAssigneeFilter = toggleArrayValue(this.tempAssigneeFilter, value);
   }
-  ////
 
   onDueDateFilterChange(event: Event): void {
     const value = (event.target as HTMLSelectElement).value;
@@ -693,7 +731,6 @@ export class TasksComponent {
     this.statusFilter = [...this.tempStatusFilter];
     this.priorityFilter = [...this.tempPriorityFilter];
     this.assigneeFilter = [...this.tempAssigneeFilter];
-    ////
     this.dueDateFilter = this.tempDueDateFilter;
     this.showFilterPanel = false;
     this.cdr.detectChanges();
@@ -704,7 +741,6 @@ export class TasksComponent {
     this.tempStatusFilter = [];
     this.tempPriorityFilter = [];
     this.tempAssigneeFilter = [];
-    ////
     this.tempDueDateFilter = '';
     this.cdr.detectChanges();
   }
@@ -715,7 +751,6 @@ export class TasksComponent {
       this.statusFilter.length > 0 ||
       this.priorityFilter.length > 0 ||
       this.assigneeFilter.length > 0 ||
-      ////
       this.dueDateFilter !== '';
   }
 
@@ -724,7 +759,6 @@ export class TasksComponent {
     return this.statusFilter.length > 0 ||
       this.priorityFilter.length > 0 ||
       this.assigneeFilter.length > 0 ||
-      ////
       this.dueDateFilter !== '';
   }
 
@@ -740,8 +774,20 @@ export class TasksComponent {
     if (this.statusFilter.length > 0) {
       return this.columns.filter(col => this.statusFilter.includes(col));
     }
-    ////
     // フィルターがない場合はすべてのカラムを表示
     return this.columns;
+  }
+
+  // エラーハンドラー共通化
+  private handleSingleTaskError(err: any) {
+    if (err.message === 'TASK_OPTIMISTIC_LOCK_ERROR') {
+      alert('⚠️ このタスクは編集・移動を開始した後に、他のユーザーによって更新されました。\n画面を再読み込みします。');
+      window.location.reload();
+    } else if (err.message === 'COLUMN_NOT_FOUND_OR_CHANGED') {
+      alert('⚠️ タスクの移動先・所属するリストが、他のユーザーによって変更または削除されました。\n画面を再読み込みします。');
+      window.location.reload();
+    } else {
+      alert('保存に失敗しました: ' + (err.message || ''));
+    }
   }
 }
