@@ -240,7 +240,7 @@ export class TaskEditModalComponent implements OnChanges {
     this.save.emit(taskToSave);
     this.cdr.detectChanges();
   }
-
+ 
   toggleAssignee(member: string) {
     if (!this.editingTask.assignees) {
       this.editingTask.assignees = [];

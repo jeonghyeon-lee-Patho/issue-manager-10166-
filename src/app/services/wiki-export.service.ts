@@ -21,7 +21,7 @@ export class WikiExportService {
     const dueDateStr = formatDateToJP(task.dueDate);
     const assigneesStr = (task.assignees?.length ?? 0) > 0 ? task.assignees!.join(', ') : 'なし';
     const tagsStr = (task.tags?.length ?? 0) > 0 ? task.tags!.map(t => `#${t}`).join(' ') : 'なし';
-
+ 
     const lines: string[] = [];
 
     // 【基本情報ブロック】

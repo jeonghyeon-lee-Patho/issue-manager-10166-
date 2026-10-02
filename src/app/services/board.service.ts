@@ -157,7 +157,7 @@ export class BoardService {
       // メンバーのメールアドレスをチェック
       if (members.some(m => m.email === email)) {
         throw new Error('既に招待されているか、メンバーに登録されています。');
-      }
+      } 
     }
 
     // 招待テーブルをチェック

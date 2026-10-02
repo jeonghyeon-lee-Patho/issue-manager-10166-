@@ -19,7 +19,7 @@ export const PRIORITY_RANK: Record<'high' | 'medium' | 'low', number> = {
   medium: 2,
   low: 1
 };
-
+ 
 export const MAX_TAGS = 5;
 
 /**

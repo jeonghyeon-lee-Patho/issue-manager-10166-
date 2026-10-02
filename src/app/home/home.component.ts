@@ -18,7 +18,7 @@ export class HomeComponent implements OnInit {
   currentUser: User | null = null;
   allBoards: any[] = [];
   pendingBoards: BoardInvitation[] = [];
-
+ 
   showModal = false;
   modalStep: 1 | 2 = 1;
 

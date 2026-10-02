@@ -587,7 +587,7 @@ export class TasksComponent {
       this.closeEditModal();
       this.cdr.detectChanges();
     }
-  }
+  } 
 
   // ハンドラーメソッド（テンプレートから呼び出し）
   onTaskCardStatusChange(event: { task: Task; newStatus: string }) {

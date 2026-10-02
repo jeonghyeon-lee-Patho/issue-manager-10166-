@@ -17,7 +17,7 @@ export class MembersComponent implements OnInit {
   @Input() boardId: string = '';
   @Input() currentUserName: string = '';
   @Input() isAdmin: boolean = false;
-
+ 
   members: BoardMember[] = [];
   currentUserUid: string | null = null;
   readonly defaultPhotoUrl = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%23e2e8f0'/><circle cx='50' cy='40' r='18' fill='%2394a3b8'/><path d='M 18,88 C 18,65 32,58 50,58 C 68,58 82,65 82,88 Z' fill='%2394a3b8'/></svg>`;

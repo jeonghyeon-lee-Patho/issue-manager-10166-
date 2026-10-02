@@ -13,4 +13,4 @@ export const routes: Routes = [
   { path: 'board/:boardId/:category', component: BoardComponent, canActivate: [authGuard, boardAccessGuard] }
 ]; 
 
-  
+   

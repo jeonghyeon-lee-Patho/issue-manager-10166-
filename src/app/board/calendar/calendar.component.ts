@@ -259,7 +259,7 @@ export class CalendarComponent implements OnInit, OnChanges {
         window.location.reload();
       } else {
         alert('保存に失敗しました: ' + (err.message || ''));
-      }
+      } 
     }
   }
 

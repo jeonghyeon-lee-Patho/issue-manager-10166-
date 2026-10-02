@@ -27,7 +27,6 @@
   border-bottom: 1px solid #e2e8f0;
   background-color: #f8fafc;
   flex-wrap: nowrap;
-  overflow-x: auto;
 }
 
 .header-left, .header-right {
@@ -494,7 +493,7 @@
   flex-direction: column;
   gap: 6px;
 }
-
+ 
 .empty-column-msg {
   font-size: 11px;
   color: #cbd5e1;

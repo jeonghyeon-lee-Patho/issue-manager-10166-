@@ -21,7 +21,7 @@ export interface TaskActivity {
   user: string;
   action: string;
   timestamp: number;
-}
+} 
 
 export interface Task {
   id: string;
@@ -64,14 +64,15 @@ function getPriorityText(p?: string): string {
 function formatDueDateText(dueDate?: number, hasTime?: boolean): string {
   if (!dueDate) return '';
   const d = new Date(dueDate);
+  const y = d.getFullYear();
   const m = d.getMonth() + 1;
   const date = d.getDate();
   if (hasTime) {
     const hh = ('0' + d.getHours()).slice(-2);
     const mm = ('0' + d.getMinutes()).slice(-2);
-    return `${m}/${date} ${hh}:${mm}`;
+    return `${y}/${m}/${date} ${hh}:${mm}`;
   }
-  return `${m}/${date}`;
+  return `${y}/${m}/${date}`;
 }
 
 /**

@@ -15,7 +15,7 @@ export function cleanUndefinedFields<T extends Record<string, any>>(obj: T): Par
     }
   });
   return cleaned;
-}
+} 
 
 /**
  * 配列内の値をトグル（あれば削除、なければ追加）

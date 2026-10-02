@@ -21,7 +21,7 @@
         (drop)="onDrop(i)"
         (dragend)="onDragEnd()"
         (click)="selectSection(section.id)"
-      > 
+      >  
         <span class="section-icon">{{ section.icon }}</span>
         <span class="section-title">{{ section.title }}</span>
         <button class="btn-delete-section" (click)="deleteSection(section.id, $event); $event.stopPropagation()" title="削除">×</button>

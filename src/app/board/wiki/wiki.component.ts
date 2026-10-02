@@ -47,7 +47,7 @@ export class WikiComponent implements OnChanges {
         // データがまだ無い場合は初期テンプレートをセット
         this.initDefaultSections();
       }
-
+ 
       if (!this.activeSectionId && this.sections.length > 0) {
         this.selectSection('all');
       }

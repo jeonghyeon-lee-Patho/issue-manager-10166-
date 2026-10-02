@@ -486,7 +486,7 @@ export class BoardComponent implements OnInit, OnDestroy, OnChanges {
           updatedTask.assignees = task.assignees.map(assignee =>
             assignee === oldUserName ? newUserName : assignee
           );
-        }
+        } 
 
         if (task.activities && task.activities.length > 0) {
           updatedTask.activities = task.activities.map(act => ({

@@ -13,7 +13,7 @@ export const boardAccessGuard: CanActivateFn = async (route, state) => {
   if (!boardId) {
     router.navigate(['/home']);
     return false;
-  }
+  } 
 
   try {
     // ボードが存在するかチェック

@@ -16,7 +16,7 @@ export class TaskCardComponent {
   @Input() isDragging = false;
   @Input() currentUserName: string = '';
   @Input() boardMembers: any[] = [];
-
+ 
   @Output() editTask = new EventEmitter<Task>();
   @Output() deleteClick = new EventEmitter<string>();
   @Output() dragStart = new EventEmitter<Task>();

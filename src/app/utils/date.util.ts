@@ -16,7 +16,7 @@ export function getDaysDifference(date1: Date, date2: Date): number {
   return Math.ceil(diffTime / MS_PER_DAY);
 }
 
-/**
+/** 
  * 期限のステータスを計算
  */
 export interface DeadlineStatus {

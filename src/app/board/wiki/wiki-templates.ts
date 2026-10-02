@@ -18,7 +18,7 @@ export const DEFAULT_TEMPLATES: { [key: string]: WikiTemplate } = {
 1. 迅速なコミュニケーション
 2. 失敗を恐れずチャレンジする
 3. お互いのフィードバックをリスペクトする`
-  },
+  }, 
   rules: {
     title: 'タスク運用ルール',
     icon: '📋',

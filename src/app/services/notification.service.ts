@@ -16,7 +16,7 @@ export interface TaskNotification {
 })
 export class NotificationService {
   private firestore = inject(Firestore);
-
+ 
   /**
    * タスク関連の通知を送信
    */

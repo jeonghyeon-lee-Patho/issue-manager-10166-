@@ -12,7 +12,7 @@ import { first } from 'rxjs/operators';
   imports: [CommonModule, FormsModule],
   templateUrl: './login.component.html',
   styleUrl: './login.component.css'
-})
+}) 
 export class LoginComponent implements OnInit {
   email = '';
   password = '';

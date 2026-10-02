@@ -60,7 +60,7 @@
         [class.today]="isToday(day.date)" (dragover)="onDragOver($event)" (drop)="onDropToDate($event, day.date)">
         <!-- 日付の数字 -->
         <div class="date-number">{{ day.date.getDate() }}</div>
-
+ 
         <!-- その日のタスク一覧 -->
         <div class="task-list">
           <!-- 色プロパティがなければデフォルトの青色（#3498db）を適用 -->
