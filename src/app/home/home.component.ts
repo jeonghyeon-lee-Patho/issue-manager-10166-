@@ -184,13 +184,6 @@ export class HomeComponent implements OnInit {
     const customId = this.newBoardId.trim() || Math.random().toString(36).substring(2, 9);
     const boardRef = doc(this.firestore, `boards/${customId}`);
 
-    const members = [{
-      uid: this.currentUser.uid,
-      email: this.currentUser.email || '',
-      displayName: displayName,
-      joinedAt: Date.now()
-    }];
-
     // 新規作成時に末尾の order を付与
     await setDoc(boardRef, {
       name: this.newBoardName.trim(),

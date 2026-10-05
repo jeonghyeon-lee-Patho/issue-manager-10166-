@@ -40,7 +40,7 @@ export class WikiExportService {
     lines.push('');
 
     // 【サブタスクブロック】
-    if (task.subtasks?.length ?? 0 > 0) {
+    if ((task.subtasks?.length ?? 0) > 0) {
       lines.push('【対応項目・サブタスク】');
       task.subtasks!.forEach(st => {
         lines.push(`  [${st.completed ? '✓' : ' '}] ${st.title}`);
@@ -49,7 +49,7 @@ export class WikiExportService {
     }
 
     // 【解決プロセス・議論ログ】
-    if (task.comments?.length ?? 0 > 0) {
+    if ((task.comments?.length ?? 0) > 0) {
       lines.push('【解決プロセス・議論ログ】');
       lines.push('----------------------------------------');
 

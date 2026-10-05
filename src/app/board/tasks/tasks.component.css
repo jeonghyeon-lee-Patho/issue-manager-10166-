@@ -227,16 +227,6 @@
   user-select: none;
 }
 
-.checkbox-label {
-  display: flex !important; /* 親要素の display: block を上書き */
-  align-items: center;
-  font-size: 13px !important;
-  font-weight: normal !important;
-  color: #333 !important;
-  margin-bottom: 0 !important;
-  cursor: pointer;
-  user-select: none;
-}
 .checkbox-label:hover {
   color: #3498db !important;
 }

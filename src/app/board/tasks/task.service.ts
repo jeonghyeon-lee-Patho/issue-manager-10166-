@@ -129,8 +129,13 @@ export function generateTaskDiffLog(oldTask: Task, newTask: Task): string {
     changes.push('サブタスクを更新');
   }
 
+  // 9. コメントの変更
+  if (JSON.stringify(oldTask.comments || []) !== JSON.stringify(newTask.comments || [])) {
+    changes.push('コメントを更新');
+  }
+
   // 変更点があればスラッシュ区切りで結合、なければデフォルト文言
-  return changes.length > 0 ? changes.join(' / ') : '内容を更新';
+  return changes.length > 0 ? changes.join(' / ') : '';
 }
 
 @Injectable({

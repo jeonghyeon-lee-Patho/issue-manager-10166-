@@ -142,7 +142,7 @@ export class BoardService {
 
     // 自分自身に招待できないようにする
     if (email === currentUser.email) {
-      throw new Error('既に招待されているか、メンバーに登録されています。');
+      throw new Error('自分自身を招待することはできません。');
     }
 
     // ボードドキュメントを取得して、既存メンバーをチェック

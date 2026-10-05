@@ -106,7 +106,15 @@ export class MembersComponent implements OnInit {
   // メンバーを強制削除（キック）
   async kickMember(member: BoardMember) {
     if (!confirm(`${member.displayName} をボードから追放（キック）しますか？\nこのメンバーはボードにアクセスできなくなります。`)) return;
-    await this.boardService.removeMemberFromBoard(this.boardId, member);
+
+    try {
+      await this.boardService.removeMemberFromBoard(this.boardId, member);
+      await this.boardService.removeUserFromTaskAssignees(this.boardId, member.displayName);
+
+      alert(`${member.displayName} を追放しました。`);
+    } catch (error: any) {
+      alert('追放処理に失敗しました: ' + (error.message || ''));
+    }
   }
 
   // ドラッグ開始ハンドラー
@@ -276,20 +284,6 @@ export class MembersComponent implements OnInit {
     } catch (error: any) {
       this.inviteError = error.message || '招待送信に失敗しました';
       this.cdr.detectChanges();
-    }
-  }
-
-  /**
-   * メンバーを削除（全メンバーが可能）
-  */
-  async removeMember(member: BoardMember) {
-    if (confirm(`${member.displayName} をボードから削除してもよろしいですか？`)) {
-      try {
-        await this.boardService.removeMemberFromBoard(this.boardId, member);
-        alert('メンバーを削除しました');
-      } catch (error: any) {
-        alert('削除に失敗しました: ' + (error.message || 'Unknown error'));
-      }
     }
   }
 } 

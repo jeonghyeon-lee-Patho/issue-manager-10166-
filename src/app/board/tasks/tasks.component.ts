@@ -493,12 +493,6 @@ export class TasksComponent {
     const [movedColumn] = newColumns.splice(fromIndex, 1);
     newColumns.splice(toIndex, 0, movedColumn);
 
-    // Firestoreに保存
-    /*
-    await this.taskService.saveToFirestore(this.boardId, newColumns, this.tasks);
-    this.columns = newColumns;
-    this.cdr.detectChanges();
-    */
     await this.safeSave(newColumns, this.tasks);
   }
 
@@ -538,6 +532,8 @@ export class TasksComponent {
 
       if (this.editingTaskId && originalTask) {
         const logText = generateTaskDiffLog(originalTask, task);
+
+        if (logText.length === 0) return;
         const updatedActivities = addActivityLog(originalTask, this.currentUserName, logText);
         
         const taskToSave: Task = {
@@ -627,15 +623,42 @@ export class TasksComponent {
     }
   }
 
-  async saveTaskUpdate(task: Task) {
+  async saveTaskUpdate(updatedTask: Task) {
     if (!this.boardId) return;
 
-    const updatedTasks = this.taskService.updateTask(this.tasks, task);
-    await this.taskService.saveToFirestore(this.boardId, this.columns, updatedTasks);
-    this.tasks = updatedTasks;
+    // 1. 変更前の元タスクを取得
+    const originalTask = this.tasks.find(t => t.id === updatedTask.id);
+    if (!originalTask) return;
 
-    await this.sendTaskNotification(task, false);
-    this.cdr.detectChanges();
+    // 2. 差分ログを自動生成（サブタスク・進捗変更時は「サブタスクを更新」）
+    const logText = generateTaskDiffLog(originalTask, updatedTask);
+    if (!logText && JSON.stringify(originalTask) === JSON.stringify(updatedTask)) {
+      return;
+    }
+
+    // 3. アクティビティ履歴を追加
+    let taskToSave: Task = { ...updatedTask };
+    if (logText) {
+      const updatedActivities = addActivityLog(originalTask, this.currentUserName, logText);
+      taskToSave = {
+        ...taskToSave,
+        activities: updatedActivities,
+        updatedAt: Date.now()
+      };
+    }
+
+    try {
+      // 4. 排他ロック付きで Firestore に保存
+      await this.taskService.updateSingleTaskWithLock(this.boardId, taskToSave);
+
+      // 5. 通知の送信とローカル状態の即時更新
+      await this.sendTaskNotification(taskToSave, 'update', `タスク「${taskToSave.title}」が更新されました`);
+      this.tasks = this.tasks.map(t => t.id === taskToSave.id ? taskToSave : t);
+      this.cdr.detectChanges();
+
+    } catch (err) {
+      this.handleSingleTaskError(err);
+    }
   }
 
   private async sendTaskNotification(

@@ -14,7 +14,7 @@
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
   margin: 16px;
   overflow: hidden;
-  flex: 1; /* ★追加：パネルの有無に合わせて横幅が伸縮 */
+  flex: 1; 
   min-width: 600px;
 }
 

@@ -151,7 +151,7 @@ export class WikiComponent implements OnChanges {
   }
 
   // 項目の削除
-  deleteSection(id: string, event: Event) {
+  async deleteSection(id: string, event: Event) {
     event.stopPropagation();
     if (this.sections.length <= 1) {
       alert('最低1つの項目は必要です');
@@ -163,7 +163,7 @@ export class WikiComponent implements OnChanges {
         this.isEditing = false;
         this.activeSectionId = 'all';
       }
-      this.saveToFirestore();
+      await this.saveToFirestore();
     }
   }
 

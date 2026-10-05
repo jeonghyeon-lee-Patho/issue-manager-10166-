@@ -1,11 +1,11 @@
-import { Component, OnInit, inject, DestroyRef, ChangeDetectorRef, NgZone, OnDestroy, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, OnInit, inject, DestroyRef, ChangeDetectorRef, NgZone, OnDestroy } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 // Firestore関連のインポート
 import { Firestore, doc, onSnapshot, setDoc, collection, query, where, orderBy, limit, updateDoc, deleteDoc } from '@angular/fire/firestore';
-import { Auth, updateProfile } from '@angular/fire/auth';
+import { Auth } from '@angular/fire/auth';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TasksComponent } from './tasks/tasks.component';
 import { Task } from './tasks/task.service';
@@ -32,7 +32,7 @@ export interface BoardNotification {
   templateUrl: './board.component.html',
   styleUrls: ['./board.component.css']
 })
-export class BoardComponent implements OnInit, OnDestroy, OnChanges {
+export class BoardComponent implements OnInit, OnDestroy {
   boardId: string = '';
   boardName: string = '';
   currentUserName: string = '';  // 現在のユーザー名
@@ -149,10 +149,6 @@ export class BoardComponent implements OnInit, OnDestroy, OnChanges {
           }
           this.cdr.markForCheck();
           this.cdr.detectChanges();
-
-          if (!this.noticeUnsub) {
-            this.subscribeNotifications();
-          }
         });
       }, (err) => {
         console.error('Firestore Read Error:', err);
@@ -160,12 +156,6 @@ export class BoardComponent implements OnInit, OnDestroy, OnChanges {
 
       this.destroyRef.onDestroy(() => unsubscribe());
     });
-  }
-
-  ngOnChanges(changes: SimpleChanges) {
-    if (changes['currentUserName']) {
-      this.subscribeNotifications();
-    }
   }
 
   ngOnDestroy() {

@@ -2,9 +2,11 @@
 import { Component, Input, OnInit, OnChanges, SimpleChanges, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Firestore, doc, getDoc, updateDoc, collection, addDoc } from '@angular/fire/firestore';
-import { Task, TaskService, addActivityLog } from '../tasks/task.service';
+import { Firestore, collection, addDoc } from '@angular/fire/firestore';
+import { Task, TaskService, addActivityLog, generateTaskDiffLog } from '../tasks/task.service';
 import { TaskEditModalComponent } from '../tasks/task-edit-modal/task-edit-modal.component';
+import { NotificationService } from '../../services/notification.service';
+
 
 interface CalendarDay {
   date: Date;
@@ -30,6 +32,7 @@ export class CalendarComponent implements OnInit, OnChanges {
   private firestore = inject(Firestore);
   private cdr = inject(ChangeDetectorRef);
   private taskService = inject(TaskService);
+  private notificationService = inject(NotificationService);
 
   private operationStartedTaskUpdatedAt?: number;
   private isDraggingUnscheduled = false;
@@ -225,31 +228,49 @@ export class CalendarComponent implements OnInit, OnChanges {
       const oldAssignees = originalTask ? [...(originalTask.assignees || [])] : [];
       const oldStatus = originalTask?.status || '';
 
-      // カレンダーからの変更ログ追加（既存ログがない場合のみ付与）
-      let taskWithLog = { ...updatedTask };
+      let taskWithLog: Task = {
+        ...updatedTask,
+        activities: originalTask?.activities ? [...originalTask.activities] : []
+      };
+
       if (originalTask) {
-        let logText = 'カレンダーから課題を更新';
-        if (oldStatus && oldStatus !== updatedTask.status) {
-          logText = `ステータスを [${oldStatus}] → [${updatedTask.status}] に変更`;
+        const logText = generateTaskDiffLog(originalTask, updatedTask);
+        if (!logText) {
+          this.closeTaskEdit();
+          return;
         }
+        // 変更がある場合のみアクティビティ履歴を追加
         taskWithLog.activities = addActivityLog(originalTask, this.currentUserName, logText);
       }
 
-      // 精密ロック付き更新処理を呼ぶ
+      // 排他ロック付き更新処理
       await this.taskService.updateSingleTaskWithLock(
         this.boardId,
         taskWithLog,
         this.operationStartedTaskUpdatedAt
       );
 
-      let customMsg = `タスク「${updatedTask.title}」の内容がカレンダーから更新されました`;
+      let customMsg = `タスク「${updatedTask.title}」の内容が更新されました`;
       if (oldStatus && oldStatus !== updatedTask.status) {
         customMsg = `「${updatedTask.title}」のステータスが [${oldStatus}] → [${updatedTask.status}] に変更されました`;
       }
 
-      await this.sendTaskNotification(updatedTask, 'update', customMsg, oldAssignees);
+      await this.notificationService.sendTaskNotifications(
+        this.boardId,
+        updatedTask,
+        'update',
+        this.currentUserName,
+        oldAssignees,
+        customMsg
+      );
+
+      // ローカル状態を更新して再描画
       this.closeTaskEdit();
+      this.tasks = this.tasks.map(t => t.id === taskWithLog.id ? taskWithLog : t);
+      this.generateCalendar();
+      this.cdr.markForCheck();
       this.cdr.detectChanges();
+
     } catch (err: any) {
       if (err.message === 'TASK_OPTIMISTIC_LOCK_ERROR') {
         alert('⚠️ このタスクは編集を開始した後に、他のユーザーによって更新されました。\n画面を再読み込みします。');
@@ -259,70 +280,7 @@ export class CalendarComponent implements OnInit, OnChanges {
         window.location.reload();
       } else {
         alert('保存に失敗しました: ' + (err.message || ''));
-      } 
-    }
-  }
-
-  private async sendTaskNotification(
-    task: Task,
-    actionType: 'create' | 'update' | 'delete' | boolean,
-    customMessage?: string,
-    oldAssignees: string[] = []
-  ) {
-    if (!this.boardId) return;
-
-    try {
-      const noticesRef = collection(this.firestore, `boards/${this.boardId}/notifications`);
-      const promises: Promise<any>[] = [];
-      const currentAssignees = task.assignees || [];
-
-      // ① 担当から外されたユーザーへ通知
-      if (oldAssignees.length > 0) {
-        const removedAssignees = oldAssignees.filter(user => !currentAssignees.includes(user));
-
-        for (const removedUser of removedAssignees) {
-          if (removedUser !== this.currentUserName) {
-            promises.push(addDoc(noticesRef, {
-              targetUser: removedUser,
-              type: 'task',
-              title: '担当解除',
-              message: `タスク「${task.title}」の担当者から外されました (操作: ${this.currentUserName})`,
-              createdAt: Date.now(),
-              read: false
-            }));
-          }
-        }
       }
-
-      // ② 現在の担当者へ通知
-      if (currentAssignees.length > 0) {
-        let title = 'タスク更新';
-        let defaultMsg = `タスク「${task.title}」が更新されました`;
-        const finalMessage = `${customMessage || defaultMsg} (操作: ${this.currentUserName})`;
-
-        for (const assignee of currentAssignees) {
-          const isNewlyAdded = oldAssignees.length > 0 && !oldAssignees.includes(assignee);
-          const notificationTitle = isNewlyAdded ? '新規タスク割り当て' : title;
-          const notificationMsg = isNewlyAdded
-            ? `タスク「${task.title}」の担当者にあなたが追加されました (操作: ${this.currentUserName})`
-            : finalMessage;
-
-          if (assignee !== this.currentUserName) {
-            promises.push(addDoc(noticesRef, {
-              targetUser: assignee,
-              type: 'task',
-              title: notificationTitle,
-              message: notificationMsg,
-              createdAt: Date.now(),
-              read: false
-            }));
-          }
-        }
-      }
-
-      await Promise.all(promises);
-    } catch (err) {
-      console.error('Calendar Notification Send Error:', err);
     }
   }
 
@@ -377,23 +335,16 @@ export class CalendarComponent implements OnInit, OnChanges {
     if (!task) return;
 
     const updatedDueDate = new Date(targetDate).setHours(0, 0, 0, 0);
-    const dateStr = `${targetDate.getMonth() + 1}/${targetDate.getDate()}`;
-    // ログ記録
-    const logText = `期限を [${dateStr}] に設定`;
-    const updatedActivities = addActivityLog(task, this.currentUserName, logText);
 
     const updatedTask: Task = {
       ...task,
       dueDate: updatedDueDate,
       hasTime: false,
-      activities: updatedActivities,
       updatedAt: Date.now()
     };
 
-    // 保存処理の呼び出し
+    // saveTask 側で自動的に「期限を [2026/10/05] に設定」のログが生成されます
     await this.saveTask(updatedTask);
-    this.cdr.markForCheck();
-    this.cdr.detectChanges();
   }
 }
 
