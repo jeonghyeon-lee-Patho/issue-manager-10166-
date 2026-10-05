@@ -221,6 +221,10 @@ export class TaskEditModalComponent implements OnChanges {
       return;
     }
 
+    const validSubtasks = (this.editingTask.subtasks || [])
+      .filter(st => st.title && st.title.trim() !== '')
+      .map(st => ({ ...st, title: st.title.trim() }));
+
     const taskToSave = {
       id: this.task?.id || Date.now().toString(),
       title: this.editingTask.title!.trim(),
@@ -229,7 +233,7 @@ export class TaskEditModalComponent implements OnChanges {
       dueDate: this.editingTask.dueDate,
       hasTime: this.editingTask.hasTime || false,
       description: this.editingTask.description || '',
-      subtasks: this.editingTask.subtasks || [],
+      subtasks: validSubtasks,
       comments: this.editingTask.comments || [],
       assignees: this.editingTask.assignees || [],
       tags: this.editingTask.tags || [],
