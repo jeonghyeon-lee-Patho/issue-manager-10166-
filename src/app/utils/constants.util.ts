@@ -21,6 +21,7 @@ export const PRIORITY_RANK: Record<'high' | 'medium' | 'low', number> = {
 };
  
 export const MAX_TAGS = 5;
+export const MAX_HOURS = 999;
 
 /**
  * 優先度ラベルを取得

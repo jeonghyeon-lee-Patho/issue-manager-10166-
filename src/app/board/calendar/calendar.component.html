@@ -1,29 +1,39 @@
 <div class="calendar-wrapper">
+  <!-- メインカレンダー領域 -->
   <div class="calendar-container">
-    <!-- カレンダー上段：月切り替え -->
+    <!-- ヘッダーエリア -->
     <div class="calendar-header">
-      <!-- 左側のボタン群 -->
-
       <div class="header-left">
         <button class="btn-nav" (click)="prevMonth()">
-          <span class="arrow">◀</span> 先月</button>
+          <span class="arrow">◀</span> 先月
+        </button>
+        <!--
+        <div class="view-toggle-group">
+          <button class="toggle-btn" [class.active]="viewMode === 'month'" (click)="setViewMode('month')">
+            📅 カレンダー
+          </button>
+
+          <button class="toggle-btn" [class.active]="viewMode === 'gantt'" (click)="setViewMode('gantt')">
+            📊 ガント
+          </button>
+        </div>
+        -->
       </div>
 
-      <!-- 中央の年月表示 ＆ 選択ドロップダウン -->
+      <!-- 年月表示 & 年月選択ピッカー -->
       <div class="month-selector-container">
         <div class="month-center-wrapper">
           <h2 class="current-month clickable" (click)="toggleDatePicker()">
             {{ displayYearMonth }}
           </h2>
           <button class="btn-today" (click)="goToToday()">今月</button>
-          <!-- クリック時のみ表示されるポップアップメニュー -->
+
+          <!-- ドロップダウンピッカー -->
           <div class="month-picker-dropdown" *ngIf="showDatePicker">
             <div class="picker-row">
-              <!-- 年選択 -->
               <select [(ngModel)]="selectedYear" class="picker-select">
                 <option *ngFor="let y of yearOptions" [value]="y">{{ y }}年</option>
               </select>
-              <!-- 月選択 -->
               <select [(ngModel)]="selectedMonth" class="picker-select">
                 <option *ngFor="let m of monthOptions" [value]="m">{{ m + 1 }}月</option>
               </select>
@@ -36,7 +46,6 @@
         </div>
       </div>
 
-      <!-- 右側のボタン群 -->
       <div class="header-right">
         <button class="btn-unscheduled-toggle" [class.active]="showUnscheduledPanel" (click)="toggleUnscheduledPanel()"
           title="期限未設定のタスクを表示/非表示">
@@ -44,26 +53,25 @@
         </button>
 
         <button class="btn-nav" (click)="nextMonth()">次月
-          <span class="arrow">▶</span></button>
+          <span class="arrow">▶</span>
+        </button>
       </div>
     </div>
 
-    <!-- カレンダー本体（グリッド） -->
-    <div class="calendar-grid">
-      <!-- 曜日ヘッダー -->
-      <div class="weekday-header" *ngFor="let day of weekDays">
+    <!-- 1. 📅 月間カレンダー表示（既存グリッド） -->
+    <div *ngIf="viewMode === 'month'" class="calendar-grid">
+      <div class="weekday-header" *ngFor="let day of weekDays" [class.holiday]="day==='Sat' || day==='Sun'">
         {{ day }}
       </div>
 
-      <!-- 日付マス -->
       <div class="day-cell" *ngFor="let day of calendarDays" [class.other-month]="!day.isCurrentMonth"
         [class.today]="isToday(day.date)" (dragover)="onDragOver($event)" (drop)="onDropToDate($event, day.date)">
-        <!-- 日付の数字 -->
-        <div class="date-number">{{ day.date.getDate() }}</div>
- 
-        <!-- その日のタスク一覧 -->
+
+        <div class="date-number" [class.text-holiday]="day.isHoliday">
+          {{ day.date.getDate() }}
+        </div>
+
         <div class="task-list">
-          <!-- 色プロパティがなければデフォルトの青色（#3498db）を適用 -->
           <div class="calendar-task" *ngFor="let task of day.tasks" [style.backgroundColor]="getTaskColor(task)"
             (click)="openTaskEdit(task)" title="{{ task.title }}">
             {{ task.title }}
@@ -71,9 +79,40 @@
         </div>
       </div>
     </div>
+
+    <!--
+    <div *ngIf="viewMode === 'gantt'" class="gantt-wrapper">
+      <div class="gantt-container">
+        <div class="gantt-header-row">
+          <div class="gantt-left-header">タスク情報</div>
+          <div class="gantt-timeline-header">
+            <div *ngFor="let day of ganttDays" class="gantt-day-col" [class.is-holiday]="day.isHoliday"
+              [class.is-today]="day.isToday">
+              <span class="day-num" [class.text-holiday]="day.isHoliday">{{ day.dayNumber }}</span>
+              <span class="day-week" [class.text-holiday]="day.isHoliday">{{ day.dayOfWeekStr }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="gantt-body">
+          <div class="gantt-grid-background">
+            <div class="gantt-left-col-placeholder">
+              <span class="step-hint">💡 タスク一覧と横バーがここに描画されます</span>
+            </div>
+            <div class="gantt-timeline-grid">
+              <div *ngFor="let day of ganttDays" class="gantt-grid-col" 
+                [class.is-holiday]="day.isHoliday" [class.is-today]="day.isToday">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    -->
   </div>
 
-  <div class="unscheduled-panel" *ngIf="showUnscheduledPanel">
+  <!-- 3. 期限未設定サイドパネル（カレンダー表示時のみ右側に並べる） -->
+  <div class="unscheduled-panel" *ngIf="showUnscheduledPanel && viewMode === 'month'">
     <div class="panel-header">
       <h3>📌 期限未設定 ({{ unscheduledTasks.length }})</h3>
       <button class="btn-close-panel" (click)="toggleUnscheduledPanel()" title="閉じる">×</button>
@@ -107,6 +146,7 @@
   </div>
 </div>
 
+<!-- 4. タスク編集モーダル -->
 <app-task-edit-modal *ngIf="isModalOpen" [isOpen]="isModalOpen" [task]="selectedTask" [columns]="columns"
   [boardMembers]="boardMembers" [currentUserName]="currentUserName" (save)="saveTask($event)" (close)="closeTaskEdit()">
 </app-task-edit-modal>

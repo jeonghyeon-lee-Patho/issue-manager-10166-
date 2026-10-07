@@ -27,6 +27,11 @@ export interface Task {
   id: string;
   title: string;
   status: string;
+  // ==========================
+  startDate?: number; // 開始時間
+  estimatedHours?: number; // 予定工数
+  actualHours?: number;    // 実績工数
+  // ==========================
   dueDate?: number;
   hasTime?: boolean;
   priority?: 'low' | 'medium' | 'high';
@@ -75,9 +80,6 @@ function formatDueDateText(dueDate?: number, hasTime?: boolean): string {
   return `${y}/${m}/${date}`;
 }
 
-/**
- * ★旧タスクと新タスクを比較し、変更内容の具体的なテキストログを自動生成する
- */
 export function generateTaskDiffLog(oldTask: Task, newTask: Task): string {
   const changes: string[] = [];
 
@@ -104,6 +106,27 @@ export function generateTaskDiffLog(oldTask: Task, newTask: Task): string {
       changes.push(`期限を [${formatDueDateText(newTask.dueDate, newTask.hasTime)}] に設定`);
     }
   }
+
+  // ===== ここから追加（開始日の変更ログ） =====
+  if (oldTask.startDate !== newTask.startDate) {
+    if (!newTask.startDate) {
+      changes.push('開始日を解除');
+    } else {
+      changes.push(`開始日を [${formatDueDateText(newTask.startDate, false)}] に設定`);
+    }
+  }
+
+  if (oldTask.estimatedHours !== newTask.estimatedHours) {
+    const oldVal = oldTask.estimatedHours != null ? `${oldTask.estimatedHours}h` : '未設定';
+    const newVal = newTask.estimatedHours != null ? `${newTask.estimatedHours}h` : '未設定';
+    changes.push(`予定工数を [${oldVal}] → [${newVal}] に変更`);
+  }
+  if (oldTask.actualHours !== newTask.actualHours) {
+    const oldVal = oldTask.actualHours != null ? `${oldTask.actualHours}h` : '未設定';
+    const newVal = newTask.actualHours != null ? `${newTask.actualHours}h` : '未設定';
+    changes.push(`実績工数を [${oldVal}] → [${newVal}] に変更`);
+  }
+  // ==========================
 
   // 5. 説明文の変更
   if ((oldTask.description || '') !== (newTask.description || '')) {

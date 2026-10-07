@@ -1,7 +1,7 @@
 .calendar-wrapper {
   display: flex;
   gap: 16px;
-  height: 100%;
+  height: calc(100% - 16px);
   width: 100%;
 }
 
@@ -11,8 +11,9 @@
   height: 100%;
   background-color: white;
   border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-  margin: 16px;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  margin: 0px 16px 0px 16px;
   overflow: hidden;
   flex: 1; 
   min-width: 600px;
@@ -177,12 +178,13 @@
   grid-template-columns: repeat(7, 1fr);
   flex: 1;
   overflow-y: auto;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .weekday-header {
   text-align: center;
   padding: 12px 0;
-  font-weight: 600;
+  font-weight: 700;
   font-size: 13px;
   color: #64748b;
   border-bottom: 1px solid #e2e8f0;
@@ -194,9 +196,14 @@
   border-right: none;
 }
 
+.weekday-header.holiday,
+.date-number.text-holiday, 
+.gantt-day-col .text-holiday {
+  color: #ef4444 !important;
+}
+
 .day-cell {
   min-height: 110px;
-
   border-bottom: 1px solid #e2e8f0;
   border-right: 1px solid #e2e8f0;
   padding: 8px;
@@ -236,6 +243,16 @@
   color: #334155;
   margin-bottom: 6px;
   align-self: flex-start;
+}
+
+.day-cell.is-holiday {
+  background-color: #fffbfb;
+}
+
+/* 今日の丸バッジは青を優先 */
+.day-cell.today .date-number {
+  background-color: #3498db !important;
+  color: white !important;
 }
 
 .day-cell::-webkit-scrollbar {
@@ -522,3 +539,171 @@
   text-align: center;
   margin-top: 20px;
 }
+
+
+/* 
+.view-toggle-group {
+  display: flex;
+  background-color: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.toggle-btn {
+  background: transparent;
+  border: none;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.toggle-btn:hover {
+  color: #1e293b;
+}
+
+.toggle-btn.active {
+  background-color: #ffffff;
+  color: #2563eb;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.gantt-wrapper {
+  background: white;
+  border-top: 1px solid #e2e8f0;
+  border-bottom: 1px solid #cbd5e1;
+  flex: 1;
+  min-height: 400px;
+  overflow: auto;
+}
+
+.gantt-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 100%;
+  background: #ffffff;
+  overflow-x: auto;
+}
+
+.gantt-header-row {
+  display: flex;
+  border-bottom: 2px solid #cbd5e1;
+  background-color: #f8fafc;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  min-width: max-content;
+}
+
+.gantt-left-header {
+  width: 260px;
+  min-width: 260px;
+  padding: 10px 16px;
+  font-weight: 700;
+  font-size: 13px;
+  color: #334155;
+  border-right: 2px solid #cbd5e1;
+  display: flex;
+  align-items: center;
+  background-color: #f1f5f9;
+}
+
+.gantt-timeline-header {
+  display: flex;
+}
+
+.gantt-day-col {
+  width: 36px;
+  min-width: 36px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 0;
+  border-right: 1px solid #e2e8f0;
+  font-size: 11px;
+}
+
+.gantt-day-col .day-num {
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.gantt-day-col .day-week {
+  font-size: 10px;
+  color: #64748b;
+}
+
+.gantt-day-col.is-weekend {
+  background-color: #f1f5f9;
+}
+
+.gantt-day-col.is-weekend .day-week {
+  color: #ef4444;
+}
+
+.gantt-day-col.is-today {
+  background-color: #dbeafe;
+}
+
+.gantt-day-col.is-today .day-num {
+  color: #2563eb;
+}
+
+.gantt-body {
+  flex: 1;
+  overflow-y: auto;
+  min-width: max-content;
+  display: flex;
+  flex-direction: column;
+}
+
+.gantt-grid-background {
+  display: flex;
+  flex: 1;
+  min-height: 100%;
+}
+
+.gantt-left-col-placeholder {
+  width: 260px;
+  min-width: 260px;
+  border-right: 2px solid #cbd5e1;
+  padding: 16px;
+  background-color: #ffffff;
+}
+
+.step-hint {
+  font-size: 12px;
+  color: #94a3b8;
+  line-height: 1.5;
+  display: block;
+}
+
+.gantt-timeline-grid {
+  display: flex;
+}
+
+.gantt-grid-col {
+  width: 36px;
+  min-width: 36px;
+  border-right: 1px solid #f1f5f9;
+  height: 100%;
+}
+
+.gantt-grid-col.is-weekend {
+  background-color: #fafafa;
+}
+
+.gantt-grid-col.is-today {
+  background-color: #eff6ff;
+}
+*/
+
+

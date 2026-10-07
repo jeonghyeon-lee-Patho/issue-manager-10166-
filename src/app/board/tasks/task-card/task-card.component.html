@@ -88,15 +88,31 @@
         <span *ngIf="task.priority" [class]="'priority-badge ' + taskService.getPriorityClass(task.priority)">
           {{ task.priority }}
         </span>
+
+        <!-- ===== 追加: 工数バッジ ===== -->
+        <div *ngIf="task.estimatedHours != null || task.actualHours != null" class="hours-badge" title="予定工数 / 実績工数">
+          ⌛ {{ task.estimatedHours != null ? task.estimatedHours : '-' }}h / {{ task.actualHours != null ? task.actualHours : '-' }}h
+        </div>
+        <!-- ========================== -->
+
         <div *ngIf="getDueDateLabel(task.dueDate)" class="due-date-label">
           {{ getDueDateLabel(task.dueDate) }}
         </div>
 
-        <div *ngIf="task.dueDate" class="due-date-container">
-          <div class="due-date-line">
+        <!-- 期間・期限表示（縦並びで省スペース化） -->
+        <div *ngIf="task.startDate || task.dueDate" class="due-date-container">
+          <!-- 開始日がある場合 -->
+          <div *ngIf="task.startDate" class="due-date-line date-subtext">
+            <span>始 {{ task.startDate | date:'yyyy/MM/dd' }}</span>
+          </div>
+
+          <!-- 期限がある場合 -->
+          <div *ngIf="task.dueDate" class="due-date-line">
             <i class="far fa-clock"></i>
             <span>{{ task.dueDate | date:'yyyy/MM/dd' }}</span>
           </div>
+
+          <!-- 時間指定がある場合 -->
           <div *ngIf="hasTime(task)" class="due-date-line">
             <span>{{ task.dueDate | date:'HH:mm' }}</span>
           </div>

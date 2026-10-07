@@ -25,7 +25,9 @@ export class MembersComponent implements OnInit {
   showInviteModal = false;
   inviteEmail = '';
   inviteError = '';
-
+  selectedProfileMember: BoardMember | null = null;
+  isEditingProfile = false;
+ 
   // 編集用状態変数
   editingUid: string | null = null;
   editingPosition: string = '';         // 1. 役職 (例: フロントエンド / リーダー)
@@ -186,16 +188,6 @@ export class MembersComponent implements OnInit {
     return this.members.some(m => m.uid === this.currentUserUid);
   }
 
-  // 自分の情報の編集を開始
-  startEdit(member: BoardMember) {
-    if (member.uid !== this.currentUserUid) return; // 自分の情報以外は拒否
-    this.editingUid = member.uid;
-    this.editingPosition = member.position || '';
-    this.editingDomain = member.domain || '';
-    this.editingStatusMessage = member.statusMessage || '';
-    this.editingContactId = member.contactId || '';
-  }
-
   // 編集をキャンセル
   cancelEdit() {
     this.editingUid = null;
@@ -234,18 +226,65 @@ export class MembersComponent implements OnInit {
     }
   }
 
-  /**
-   * 招待モーダルを開く
-   */
+  //--------------------------------------------------------
+  openProfileModal(member: BoardMember): void {
+    this.selectedProfileMember = {...member};
+    this.isEditingProfile = false; 
+    this.cdr.detectChanges();
+  }
+
+  startEditProfileFromModal(): void {
+    if (!this.selectedProfileMember || this.selectedProfileMember.uid !== this.currentUserUid) return;
+
+    this.editingPosition = this.selectedProfileMember.position || '';
+    this.editingDomain = this.selectedProfileMember.domain || '';
+    this.editingStatusMessage = this.selectedProfileMember.statusMessage || '';
+    this.editingContactId = this.selectedProfileMember.contactId || '';
+    this.isEditingProfile = true;
+
+    this.cdr.detectChanges();
+  }
+
+  closeProfileModal(): void {
+    this.selectedProfileMember = null;
+    this.isEditingProfile = false;
+    this.cancelEdit();
+  }
+
+  async saveMemberProfileFromModal(): Promise<void> {
+    if (!this.selectedProfileMember || this.selectedProfileMember.uid !== this.currentUserUid || !this.boardId) return;
+    
+    const updatedMember: BoardMember = {
+      ...this.selectedProfileMember,
+      position: this.editingPosition ? this.editingPosition.trim() : '',
+      domain: this.editingDomain ? this.editingDomain.trim() : '',
+      statusMessage: this.editingStatusMessage ? this.editingStatusMessage.trim() : '',
+      contactId: this.editingContactId ? this.editingContactId.trim() : ''
+    };
+    
+    const index = this.members.findIndex(m => m.uid === updatedMember.uid);
+    if (index !== -1) {
+      this.members[index] = updatedMember;
+    }
+
+    this.closeProfileModal();
+    this.cdr.markForCheck();
+    this.cdr.detectChanges();
+
+    try {
+      await this.boardService.updateMemberProfile(this.boardId, updatedMember);
+    } catch (error: any) {
+      alert('プロフィールの更新に失敗しました: ' + (error.message || ''));
+    }
+  }
+  //--------------------------------------------------------
+
   openInviteModal() {
     this.showInviteModal = true;
     this.inviteEmail = '';
     this.inviteError = '';
   }
 
-  /**
-   * 招待モーダルを閉じる
-   */
   closeInviteModal() {
     this.showInviteModal = false;
     this.inviteEmail = '';

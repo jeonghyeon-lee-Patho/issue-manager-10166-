@@ -2,17 +2,27 @@
 import { Component, Input, OnInit, OnChanges, SimpleChanges, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Firestore, collection, addDoc } from '@angular/fire/firestore';
 import { Task, TaskService, addActivityLog, generateTaskDiffLog } from '../tasks/task.service';
 import { TaskEditModalComponent } from '../tasks/task-edit-modal/task-edit-modal.component';
 import { NotificationService } from '../../services/notification.service';
-
+import { isHolidayOrWeekend } from '../../utils/date.util';
 
 interface CalendarDay {
   date: Date;
   isCurrentMonth: boolean;
   tasks: Task[];
+  isHoliday: boolean;
 }
+
+/*
+interface GanttDay {
+  date: Date;
+  dayNumber: number;
+  dayOfWeekStr: string;
+  isToday: boolean;
+  isHoliday: boolean;
+}
+*/
 
 @Component({
   selector: 'app-calendar',
@@ -29,7 +39,6 @@ export class CalendarComponent implements OnInit, OnChanges {
   @Input() currentUserName: string = '';
   @Input() lastUpdatedAt?: number;
 
-  private firestore = inject(Firestore);
   private cdr = inject(ChangeDetectorRef);
   private taskService = inject(TaskService);
   private notificationService = inject(NotificationService);
@@ -50,6 +59,8 @@ export class CalendarComponent implements OnInit, OnChanges {
   editingTask: Partial<Task> = {};
   editingDueDateStr: string = '';
   isModalOpen: boolean = false;
+
+  viewMode: 'month' | 'gantt' = 'month';
 
   ngOnInit() {
     this.generateCalendar();
@@ -87,7 +98,8 @@ export class CalendarComponent implements OnInit, OnChanges {
       days.push({
         date: new Date(current),
         isCurrentMonth: current.getMonth() === month,
-        tasks: this.getTasksForDate(current)
+        tasks: this.getTasksForDate(current),
+        isHoliday: isHolidayOrWeekend(current)
       });
       current.setDate(current.getDate() + 1);
     }
@@ -346,6 +358,38 @@ export class CalendarComponent implements OnInit, OnChanges {
     // saveTask 側で自動的に「期限を [2026/10/05] に設定」のログが生成されます
     await this.saveTask(updatedTask);
   }
+
+  setViewMode(mode: 'month' | 'gantt') {
+    this.viewMode = mode;
+    this.cdr.detectChanges();
+  }
+
+  /*
+  get ganttDays(): GanttDay[] {
+    const year = this.currentDate.getFullYear();
+    const month = this.currentDate.getMonth();
+    const lastDayNum = new Date(year, month + 1, 0).getDate();
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const days: GanttDay[] = [];
+    for (let d = 1; d <= lastDayNum; d++) {
+      const date = new Date(year, month, d);
+      const checkDate = new Date(date);
+      checkDate.setHours(0, 0, 0, 0);
+
+      days.push({
+        date: date,
+        dayNumber: d,
+        dayOfWeekStr: this.weekDays[date.getDay()],
+        isToday: checkDate.getTime() === today.getTime(),
+        isHoliday: isHolidayOrWeekend(date)
+      });
+    }
+    return days;
+  }
+  */
 }
 
 

@@ -45,6 +45,7 @@
   align-items: flex-end;
   max-width: 30%;
   min-width: 0; /* Flex子要素のはみ出し防止 */
+  justify-content: space-between;
 }
 
 /* タスクヘッダー */
@@ -269,7 +270,13 @@
   align-items: center;
   gap: 4px;
   font-size: 11px;
+  font-weight: 500;
   color: #64748b;
+}
+
+.due-date-line.date-subtext {
+  color: #94a3b8;
+  font-weight: 400;
 }
 
 /* ディスクリプション */
@@ -537,3 +544,20 @@
   text-overflow: ellipsis; 
   vertical-align: middle; 
 }
+
+/* ===== 追加: 工数バッジ ===== */
+.hours-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px;
+  background-color: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #475569;
+  white-space: nowrap;
+  margin-top: 2px;
+}
+

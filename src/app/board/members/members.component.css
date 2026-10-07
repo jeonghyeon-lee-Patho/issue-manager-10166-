@@ -477,3 +477,116 @@
 .btn-secondary:hover {
   background: #545b62;
 }
+
+
+/* プロフィール閲覧ボタン */
+.btn-view-profile {
+  background-color: #ffffff;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-view-profile:hover {
+  background-color: #f8fafc;
+  border-color: #94a3b8;
+  color: #1e293b;
+}
+
+/* モーダル内部デザイン */
+.profile-modal-content {
+  width: 420px;
+  max-width: 90vw;
+}
+
+.profile-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+}
+
+.profile-modal-header h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #1e293b;
+}
+
+.profile-user-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding: 12px;
+  background-color: #f8fafc;
+  border-radius: 8px;
+}
+
+.profile-modal-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #3498db;
+}
+
+.profile-user-title h4 {
+  margin: 0 0 4px 0;
+  font-size: 16px;
+  color: #0f172a;
+}
+
+.profile-email-text {
+  margin: 4px 0 0 0;
+  font-size: 12px;
+  color: #64748b;
+  font-family: monospace;
+}
+
+/* 詳細表示アイテム */
+.profile-details-view {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.profile-detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.profile-detail-item .detail-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.profile-detail-item .detail-value {
+  font-size: 13px;
+  color: #1e293b;
+  font-weight: 500;
+}
+
+.contact-id-tag {
+  font-family: monospace;
+  color: #2563eb !important;
+}
+
+.status-msg-box {
+  background-color: #f1f5f9;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+.margin-bottom {
+  margin-bottom: 12px;
+}

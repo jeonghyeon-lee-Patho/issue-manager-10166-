@@ -2,10 +2,11 @@ import { Component, Input, Output, EventEmitter, ChangeDetectionStrategy, Change
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Auth } from '@angular/fire/auth';
-import { Task, Subtask, TaskService } from '../task.service';
+import { Task, TaskService } from '../task.service';
 import { WikiExportService } from '../../../services/wiki-export.service';
-import { MAX_TAGS } from '../../../utils/constants.util';
-import { formatToDatetimeLocal, parseDatetimeLocal } from '../../../utils/date.util';
+import { MAX_TAGS, MAX_HOURS } from '../../../utils/constants.util';
+import { formatToDatetimeLocal } from '../../../utils/date.util';
+
 
 @Component({
   selector: 'app-task-edit-modal',
@@ -232,6 +233,11 @@ export class TaskEditModalComponent implements OnChanges {
       priority: this.editingTask.priority,
       dueDate: this.editingTask.dueDate,
       hasTime: this.editingTask.hasTime || false,
+      // ==========================
+      startDate: this.editingTask.startDate,
+      estimatedHours: this.editingTask.estimatedHours,
+      actualHours: this.editingTask.actualHours,
+      // ==========================
       description: this.editingTask.description || '',
       subtasks: validSubtasks,
       comments: this.editingTask.comments || [],
@@ -245,7 +251,7 @@ export class TaskEditModalComponent implements OnChanges {
     this.save.emit(taskToSave);
     this.cdr.detectChanges();
   }
- 
+
   toggleAssignee(member: string) {
     if (!this.editingTask.assignees) {
       this.editingTask.assignees = [];
@@ -305,7 +311,7 @@ export class TaskEditModalComponent implements OnChanges {
     const date = new Date(dueDate);
     const pad = (n: number) => (n < 10 ? '0' + n : n);
     return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
-  } 
+  }
 
   // 日付が変更された時
   onDateChange(dateStr: string) {
@@ -326,10 +332,10 @@ export class TaskEditModalComponent implements OnChanges {
 
     if (timeStr) {
       this.editingTask.dueDate = new Date(`${currentDateStr}T${timeStr}`).getTime();
-      this.editingTask.hasTime = true; 
+      this.editingTask.hasTime = true;
     } else {
       this.editingTask.dueDate = new Date(`${currentDateStr}T00:00`).getTime();
-      this.editingTask.hasTime = false; 
+      this.editingTask.hasTime = false;
     }
   }
 
@@ -340,4 +346,42 @@ export class TaskEditModalComponent implements OnChanges {
     this.editingTask.dueDate = new Date(`${currentDateStr}T00:00`).getTime();
     this.editingTask.hasTime = false;
   }
+
+  // 工数時間の入力制限（0未満・999超のチェック）
+  validateHours(field: 'estimatedHours' | 'actualHours'): void {
+    const val = this.editingTask[field];
+    if (val != null) {
+      if (val < 0) this.editingTask[field] = 0;
+      if (val > MAX_HOURS) this.editingTask[field] = MAX_HOURS;
+    }
+  }
+
+  // ===== ここから追加（開始日関連メソッド） =====
+  // 開始日関連メソッド
+  getStartDateString(startDate?: number): string {
+    if (!startDate) return '';
+    const date = new Date(startDate);
+    const pad = (n: number) => (n < 10 ? '0' + n : n);
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  }
+
+  onStartDateChange(dateStr: string): void {
+    if (!dateStr) {
+      this.editingTask.startDate = undefined;
+      return;
+    }
+    this.editingTask.startDate = new Date(`${dateStr}T00:00`).getTime();
+  }
+
+  // 予定工数をクリア
+  clearEstimatedHours(): void {
+    this.editingTask.estimatedHours = undefined;
+  }
+
+  // 実績工数をクリア
+  clearActualHours(): void {
+    this.editingTask.actualHours = undefined;
+  }
+  // ==========================
+
 }

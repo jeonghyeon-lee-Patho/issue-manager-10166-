@@ -602,10 +602,93 @@ textarea.form-control {
   margin-bottom: 6px;
 }
 
-/* 横並びにして幅を統一 */
-.date-time-wrapper {
+.hours-row {
   display: flex;
-  gap: 8px;
+  gap: 12px;
+  width: 100%;
+}
+
+.hours-col {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+/* 期間（開始日・期限）の整列スタイル */
+.date-time-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+}
+
+.date-time-row:last-child {
+  margin-bottom: 0;
+}
+
+/* 1. ラベル幅を固定して左端をピシッと揃える */
+.field-label {
+  width: 40px;
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+/* 入力ボックスのレスポンシブ伸縮設定 */
+.input-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-box.flex-fill {
+  flex: 1;
+}
+
+.input-box.flex-2 {
+  flex: 2;
+  min-width: 0;
+}
+
+.input-box.flex-1 {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 2 & 3. クリアボタン用の予約枠（ボタンの有無で長さが変わらないように固定） */
+.clear-btn-slot {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-clear-time {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid #cbd5e1;
+  background-color: #f8fafc;
+  color: #64748b;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.btn-clear-time:hover {
+  background-color: #fee2e2;
+  border-color: #fca5a5;
+  color: #ef4444;
+  transform: scale(1.05);
 }
 
 .input-box {

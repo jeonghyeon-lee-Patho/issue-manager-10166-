@@ -22,6 +22,11 @@ export class WikiExportService {
     const assigneesStr = (task.assignees?.length ?? 0) > 0 ? task.assignees!.join(', ') : 'なし';
     const tagsStr = (task.tags?.length ?? 0) > 0 ? task.tags!.map(t => `#${t}`).join(' ') : 'なし';
  
+    // ===== 追加: 工数文字列の生成 =====
+    const startDateStr = formatDateToJP(task.startDate);
+    const estStr = task.estimatedHours != null ? `${task.estimatedHours} 時間` : '未設定';
+    const actStr = task.actualHours != null ? `${task.actualHours} 時間` : '未設定';
+    // ==================================
     const lines: string[] = [];
 
     // 【基本情報ブロック】
@@ -29,7 +34,12 @@ export class WikiExportService {
     lines.push(`・ナレッジ保存時間 : ${formatDateTimeToJP(Date.now())}`);
     lines.push(`・ステータス : ${task.status || '未設定'}`);
     lines.push(`・優 先 度   : ${priorityLabel}`);
+    lines.push(`・開 始 日   : ${startDateStr || '未設定'}`);
     lines.push(`・期    限   : ${dueDateStr || '未設定'}`);
+    // ==================================
+    lines.push(`・予定工数   : ${estStr}`); 
+    lines.push(`・実績工数   : ${actStr}`); 
+    // ==================================
     lines.push(`・担 当 者   : ${assigneesStr}`);
     lines.push(`・タ    グ   : ${tagsStr}`);
     lines.push(''); // 空行で区切る
@@ -72,14 +82,28 @@ export class WikiExportService {
       });
 
       lines.push('----------------------------------------');
+      lines.push('');
     }
+
+    // ===== 【アクティビティ履歴（プロセスの変遷）】 =====
+    if ((task.activities?.length ?? 0) > 0) {
+      lines.push('【対応アクティビティ履歴】');
+      lines.push('----------------------------------------');
+
+      // 時系列順（古い順）に並び替えて出力
+      const sortedActivities = [...task.activities!].reverse();
+      sortedActivities.forEach(act => {
+        const dateStr = formatDateTimeToJP(act.timestamp);
+        lines.push(`・${dateStr} [${act.user}]: ${act.action}`);
+      });
+
+      lines.push('----------------------------------------');
+    }
+    // ========================================================
 
     return lines.join('\n');
   }
 
-  /**
-   * タスクをWikiセクションとして保存
-   */
   async exportTaskToWiki(boardId: string, task: Task): Promise<void> {
     const boardRef = doc(this.firestore, `boards/${boardId}`);
     const { getDoc } = await import('@angular/fire/firestore');

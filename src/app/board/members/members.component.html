@@ -5,110 +5,78 @@
     メンバーがまだいません
   </div>
 
+  <!-- メンバーカード一覧 -->
   <div *ngIf="members.length > 0" class="members-list">
     <div *ngFor="let member of members; let i = index" class="member-card" [class.is-me]="member.uid === currentUserUid"
       [class.is-dragging]="draggedMemberUid === member.uid" [attr.draggable]="editingUid !== member.uid"
       (dragstart)="onMemberDragStart($event, member, i)" (dragover)="onMemberDragOver($event)"
       (drop)="onMemberDrop($event, i)" (dragend)="onMemberDragEnd()">
 
-      <!-- 編集モード (自分のデータかつ編集中の場合) -->
-      <div *ngIf="editingUid === member.uid; else viewMode" class="member-edit-form">
-        <div class="editing-user-name">
-          <strong>{{ member.displayName }}</strong> のプロフィール設定
-        </div>
- 
-        <div class="form-grid">
-          <div class="form-field">
-            <label>ポジション・役職</label>
-            <input type="text" [(ngModel)]="editingPosition" maxlength="20" placeholder="例: フロントエンド / リーダー (20文字まで)" class="input-text" />
+      <!-- カードの基本表示 -->
+      <div class="member-info-container">
+        <img [src]="member.photoURL || defaultPhotoUrl" alt="Profile" class="member-card-avatar" />
+        <div class="member-info">
+          <div class="member-name">
+            <span class="member-display-name">{{ member.displayName }}</span>
+            <span *ngIf="member.role === 'admin'" class="admin-badge">👑 管理者</span>
+            <span *ngIf="member.position" class="member-position-tag">{{ member.position }}</span>
+            <span *ngIf="member.statusMessage" class="member-status-bubble">💬 {{ member.statusMessage }}</span>
           </div>
-
-          <div class="form-field">
-            <label>連絡先ID (Slack等)</label>
-            <input type="text" [(ngModel)]="editingContactId" maxlength="50" placeholder="例: @tanaka_dev (50文字まで)" class="input-text" />
+          <div class="member-details">
+            <div *ngIf="member.domain" class="member-domain-row">
+              <span class="detail-label">担当領域:</span> {{ member.domain }}
+            </div>
+            <div class="member-sub-info">
+              <span class="member-email">{{ member.email }}</span>
+              <span *ngIf="member.contactId" class="member-contact-tag">連絡先: {{ member.contactId }}</span>
+              <span class="member-joined">参加: {{ member.joinedAt | date: 'yyyy-MM-dd' }}</span>
+            </div>
           </div>
-
-          <div class="form-field full-width">
-            <label>担当領域</label>
-            <input type="text" [(ngModel)]="editingDomain" maxlength="50" placeholder="例: Angular, UI/UX, API設計 (50文字まで)" class="input-text" />
-          </div>
-
-          <div class="form-field full-width">
-            <label>一言ステータス・稼働状況</label>
-            <input type="text" [(ngModel)]="editingStatusMessage" maxlength="50" placeholder="例: 今週リリース前で多忙 / リモート勤務中 (50文字まで)"
-              class="input-text" />
-          </div>
-        </div>
-
-        <div class="edit-actions">
-          <button class="btn-save" (click)="saveMemberProfile(member)">保存</button>
-          <button class="btn-cancel" (click)="cancelEdit()">キャンセル</button>
         </div>
       </div>
- 
-      <!-- 通常表示モード -->
-      <ng-template #viewMode>
-        <div class="member-info-container">
-          <img [src]="member.photoURL || defaultPhotoUrl" alt="Profile" class="member-card-avatar" />
-          <div class="member-info">
-            <div class="member-name">
-              <span class="member-display-name">{{ member.displayName }}</span>
-              <span *ngIf="member.role === 'admin'" class="admin-badge">👑 管理者</span>
-              <span *ngIf="member.position" class="member-position-tag">{{ member.position }}</span>
-              <span *ngIf="member.statusMessage" class="member-status-bubble">💬 {{ member.statusMessage }}</span>
-            </div>
-            <div class="member-details">
-              <div *ngIf="member.domain" class="member-domain-row">
-                <span class="detail-label">担当領域:</span> {{ member.domain }}
-              </div>
-              <div class="member-sub-info">
-                <span class="member-email">{{ member.email }}</span>
-                <span *ngIf="member.contactId" class="member-contact-tag">連絡先: {{ member.contactId }}</span>
-                <span class="member-joined">参加: {{ member.joinedAt | date: 'yyyy-MM-dd' }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
 
-        <!-- アクションボタンエリア（右側に綺麗に整列） -->
-        <div class="member-actions">
-          <!-- 自分のプロフィール設定 -->
-          <button *ngIf="member.uid === currentUserUid" class="btn-edit" (click)="startEdit(member)">
-            ✎ プロフィール
+      <!-- アクションボタンエリア -->
+      <div class="member-actions">
+        <button *ngIf="member.uid === currentUserUid" class="btn-edit" (click)="openProfileModal(member)">
+          ✎ プロフィール
+        </button>
+
+        <!-- 他人の場合：閲覧モードでモーダルを開く -->
+        <button *ngIf="member.uid !== currentUserUid" class="btn-view-profile" (click)="openProfileModal(member)">
+          👁 プロフィール
+        </button>
+
+        <!-- 管理者用操作ボタン -->
+        <ng-container *ngIf="isCurrentUserAdmin">
+          <!-- 自分自身の管理者辞退 -->
+          <button *ngIf="member.uid === currentUserUid" class="btn-warning" (click)="relinquishAdmin(member)" title="管理者権限を辞める">
+            辞める
           </button>
 
-          <!-- 管理者用操作ボタン -->
-          <ng-container *ngIf="isCurrentUserAdmin">
-            <!-- 自分自身の管理者辞退 -->
-            <button *ngIf="member.uid === currentUserUid" class="btn-warning" (click)="relinquishAdmin(member)" title="管理者権限を辞める">
-              辞める
+          <ng-container *ngIf="member.uid !== currentUserUid">
+            <button *ngIf="member.role !== 'admin'" class="btn-small" (click)="grantAdmin(member)">
+              👑 権限追加
             </button>
-
-            <ng-container *ngIf="member.uid !== currentUserUid">
-              <button *ngIf="member.role !== 'admin'" class="btn-small" (click)="grantAdmin(member)">
-                👑 権限追加
-              </button>
-              <button *ngIf="member.role !== 'admin'" class="btn-small" (click)="transferAdmin(member)">
-                🔄 譲渡
-              </button>
-              <button class="btn-small btn-delete" (click)="kickMember(member)">
-                🚫 追放
-              </button>
-            </ng-container>
+            <button *ngIf="member.role !== 'admin'" class="btn-small" (click)="transferAdmin(member)">
+              🔄 譲渡
+            </button>
+            <button class="btn-small btn-delete" (click)="kickMember(member)">
+              🚫 追放
+            </button>
           </ng-container>
-        </div>
-      </ng-template>
+        </ng-container>
+      </div>
     </div>
   </div>
 
-  <!-- メンバーなら誰もが招待可能 -->
+  <!-- メンバー招待セクション -->
   <div *ngIf="isCurrentUserMember()" class="invite-section">
     <h4>新しいメンバーを招待</h4>
     <p class="invite-hint">メールアドレスを入力して招待を送信します</p>
     <button class="btn-open-invite" (click)="openInviteModal()">📨 招待フォームを開く</button>
   </div>
 
-  <!-- 招待モーダル -->
+  <!-- 招待送信モーダル -->
   <div *ngIf="showInviteModal" class="modal-overlay">
     <div class="modal-content">
       <h3>メンバーを招待</h3>
@@ -126,6 +94,97 @@
       <div class="modal-actions">
         <button class="btn-secondary" (click)="closeInviteModal()">キャンセル</button>
         <button class="btn-primary" (click)="inviteMember()">招待を送信</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- プロフィール詳細・編集モーダル -->
+  <div *ngIf="selectedProfileMember" class="modal-overlay" (click)="closeProfileModal()">
+    <div class="modal-content profile-modal-content" (click)="$event.stopPropagation()">
+      <div class="profile-modal-header">
+        <h3>{{ isEditingProfile ? '✎ プロフィール設定' : '👤 メンバープロフィール' }}</h3>
+        <button class="btn-close-panel" (click)="closeProfileModal()">×</button>
+      </div>
+
+      <div class="profile-modal-body">
+        <!-- アバター＆名前ヘッダー -->
+        <div class="profile-user-header">
+          <img [src]="selectedProfileMember.photoURL || defaultPhotoUrl" class="profile-modal-avatar" />
+          <div class="profile-user-title">
+            <h4>{{ selectedProfileMember.displayName }}</h4>
+            <span *ngIf="selectedProfileMember.role === 'admin'" class="admin-badge">👑 管理者</span>
+            <p class="profile-email-text">{{ selectedProfileMember.email }}</p>
+          </div>
+        </div>
+
+        <!-- 1. 普通表示（閲覧モード：自分・他人共通） -->
+        <div *ngIf="!isEditingProfile" class="profile-details-view">
+          <div class="profile-detail-item">
+            <span class="detail-label">ポジション・役職</span>
+            <span class="detail-value">{{ selectedProfileMember.position || '未設定' }}</span>
+          </div>
+
+          <div class="profile-detail-item">
+            <span class="detail-label">連絡先ID (Slack等)</span>
+            <span class="detail-value contact-id-tag">{{ selectedProfileMember.contactId || '未設定' }}</span>
+          </div>
+
+          <div class="profile-detail-item">
+            <span class="detail-label">担当領域</span>
+            <span class="detail-value">{{ selectedProfileMember.domain || '未設定' }}</span>
+          </div>
+
+          <div class="profile-detail-item">
+            <span class="detail-label">一言ステータス・稼働状況</span>
+            <span class="detail-value status-msg-box">{{ selectedProfileMember.statusMessage || '未設定' }}</span>
+          </div>
+
+          <div class="profile-detail-item">
+            <span class="detail-label">ボード参加日</span>
+            <span class="detail-value">{{ selectedProfileMember.joinedAt | date: 'yyyy年MM月dd日' }}</span>
+          </div>
+        </div>
+
+        <!-- 2. 編集モード（自分かつ「編集する」ボタンを押した時のみ） -->
+        <div *ngIf="isEditingProfile" class="profile-details-edit">
+          <div class="form-field margin-bottom">
+            <label>ポジション・役職</label>
+            <input type="text" [(ngModel)]="editingPosition" maxlength="20" placeholder="例: フロントエンド / リーダー (最大20文字)" class="input-text" />
+          </div>
+
+          <div class="form-field margin-bottom">
+            <label>連絡先ID (Slack等)</label>
+            <input type="text" [(ngModel)]="editingContactId" maxlength="50" placeholder="例: @tanaka_dev (最大50文字)" class="input-text" />
+          </div>
+
+          <div class="form-field margin-bottom">
+            <label>担当領域</label>
+            <input type="text" [(ngModel)]="editingDomain" maxlength="50" placeholder="例: Angular, UI/UX, API設計 (最大50文字)" class="input-text" />
+          </div>
+
+          <div class="form-field margin-bottom">
+            <label>一言ステータス・稼働状況</label>
+            <input type="text" [(ngModel)]="editingStatusMessage" maxlength="50" placeholder="例: 今週リリース前で多忙 (最大50文字)" class="input-text" />
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <!-- 自分かつ閲覧モードの時：「編集する」ボタンを押すと入力画面に切り替わる -->
+        <button *ngIf="!isEditingProfile && selectedProfileMember.uid === currentUserUid" class="btn-primary" (click)="startEditProfileFromModal()">
+          ✎ 編集する
+        </button>
+
+        <!-- 編集モードの時：保存・キャンセル（キャンセルすると普通表示に戻る） -->
+        <ng-container *ngIf="isEditingProfile">
+          <button class="btn-secondary" (click)="isEditingProfile = false">キャンセル</button>
+          <button class="btn-save" (click)="saveMemberProfileFromModal()">保存</button>
+        </ng-container>
+
+        <!-- 閲覧モードの時：閉じるボタン -->
+        <button *ngIf="!isEditingProfile" class="btn-secondary" (click)="closeProfileModal()">
+          閉じる
+        </button>
       </div>
     </div>
   </div>

@@ -50,31 +50,70 @@
         </div>
       </div>
 
-      <!-- 期限 (日時指定対応) -->
+      <!-- 期間（開始日・期限：UI完全揃え） -->
       <div class="form-group">
         <div class="label-row">
-          <label>期限</label>
+          <label>期間（開始日 〜 期限）</label>
         </div>
 
-        <div class="date-time-wrapper">
-          <!-- 日付入力 -->
-          <div class="input-box">
+        <!-- 開始日行 -->
+        <div class="date-time-row">
+          <span class="field-label">開始日:</span>
+          <div class="input-box flex-fill">
+            <input type="date" [ngModel]="getStartDateString(editingTask.startDate)"
+              (ngModelChange)="onStartDateChange($event)" class="form-control date-input" />
+          </div>
+          <div class="clear-btn-slot"></div>
+        </div>
+
+        <!-- 期限行 -->
+        <div class="date-time-row">
+          <span class="field-label">期限:</span>
+          <div class="input-box flex-2">
             <input type="date" [ngModel]="getDateString(editingTask.dueDate)" (ngModelChange)="onDateChange($event)"
               class="form-control date-input" />
           </div>
-
-          <!-- 時間入力（クリアボタン付き） -->
-          <div class="input-box">
+          <div class="input-box flex-1">
             <input type="time" [ngModel]="getTimeString(editingTask.dueDate)" (ngModelChange)="onTimeChange($event)"
               class="form-control time-input" [disabled]="!editingTask.dueDate" />
-            <!-- 入力枠の右外側に配置 -->
-            <button *ngIf="getTimeString(editingTask.dueDate)" type="button" class="btn-clear-time"
-              (click)="clearTimeOnly()" title="時間指定を解除">
-              ✕
-            </button>
+          </div>
+          <div class="clear-btn-slot">
+            <button type="button" class="btn-clear-time" (click)="clearTimeOnly()" title="時間指定を解除"
+              [style.visibility]="getTimeString(editingTask.dueDate) ? 'visible' : 'hidden'">✕</button>
           </div>
         </div>
       </div>
+
+      <!-- ===== 追加: 工数入力 ===== -->
+      <div class="form-group">
+        <div class="label-row">
+          <label>工数 (時間 / 最大999h)</label>
+        </div>
+        <div class="hours-row">
+          <!-- 予定工数 -->
+          <div class="hours-col">
+            <div class="input-box flex-fill">
+              <input type="number" [(ngModel)]="editingTask.estimatedHours" (ngModelChange)="validateHours('estimatedHours')" min="0" max="999" step="0.5" class="form-control" placeholder="予定 (h)" />
+            </div>
+            <div class="clear-btn-slot">
+              <button type="button" class="btn-clear-time" (click)="clearEstimatedHours()" title="予定工数を解除"
+                      [style.visibility]="editingTask.estimatedHours != null ? 'visible' : 'hidden'">✕</button>
+            </div>
+          </div>
+
+          <!-- 実績工数 -->
+          <div class="hours-col">
+            <div class="input-box flex-fill">
+              <input type="number" [(ngModel)]="editingTask.actualHours" (ngModelChange)="validateHours('actualHours')" min="0" max="999" step="0.5" class="form-control" placeholder="実績 (h)" />
+            </div>
+            <div class="clear-btn-slot">
+              <button type="button" class="btn-clear-time" (click)="clearActualHours()" title="実績工数を解除"
+                      [style.visibility]="editingTask.actualHours != null ? 'visible' : 'hidden'">✕</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- ========================== -->
 
       <!-- 担当者 -->
       <div class="form-group">
@@ -115,7 +154,7 @@
             #{{ tag }}
             <button type="button" class="btn-remove-tag" (click)="removeTag(i)">×</button>
           </span>
-        </div> 
+        </div>
       </div>
 
       <!-- サブタスク -->
@@ -154,10 +193,10 @@
                 </div>
               </div>
 
-              <!-- ★1. 通常表示（非編集時） -->
+              <!-- 通常表示（非編集時） -->
               <div *ngIf="editingCommentIndex !== i" class="comment-text">{{ comment.text }}</div>
 
-              <!-- ★2. 編集モード（editingCommentIndex === i の時） -->
+              <!-- 編集モード（editingCommentIndex === i の時） -->
               <div *ngIf="editingCommentIndex === i" class="comment-edit-box">
                 <textarea [(ngModel)]="editingCommentText" class="comment-edit-textarea"></textarea>
                 <div class="comment-edit-actions">

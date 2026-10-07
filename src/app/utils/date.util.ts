@@ -150,3 +150,87 @@ export function formatTimeShort(timestamp?: number): string {
   const mm = pad(date.getMinutes());
   return `${m}/${d} ${hh}:${mm}`;
 }
+
+/**
+ * 日本の祝日判定ユーティリティ
+ */
+
+function isNthMonday(date: Date, nth: number): boolean {
+  if (date.getDay() !== 1) return false;
+  const day = date.getDate();
+  return day > (nth - 1) * 7 && day <= nth * 7;
+}
+
+function getSpringEquinoxDay(year: number): number {
+  return Math.floor(20.8431 + 0.242194 * (year - 1980) - Math.floor((year - 1980) / 4));
+}
+
+function getAutumnEquinoxDay(year: number): number {
+  return Math.floor(23.2488 + 0.242194 * (year - 1980) - Math.floor((year - 1980) / 4));
+}
+
+export function isNationalHoliday(date: Date): boolean {
+  const y = date.getFullYear();
+  const m = date.getMonth() + 1;
+  const d = date.getDate();
+
+  // 1. 固定祝日
+  if (m === 1 && d === 1) return true;   // 元日
+  if (m === 2 && d === 11) return true;  // 建国記念の日
+  if (m === 2 && d === 23) return true;  // 天皇誕生日
+  if (m === 4 && d === 29) return true;  // 昭和の日
+  if (m === 5 && d === 3) return true;   // 憲法記念日
+  if (m === 5 && d === 4) return true;   // みどりの日
+  if (m === 5 && d === 5) return true;   // こどもの日
+  if (m === 8 && d === 11) return true;  // 山の日
+  if (m === 11 && d === 3) return true;  // 文化の日
+  if (m === 11 && d === 23) return true; // 勤労感謝の日
+
+  // 2. ハッピーマンデー
+  if (m === 1 && isNthMonday(date, 2)) return true;  // 成人の日 (1月第2月曜)
+  if (m === 7 && isNthMonday(date, 3)) return true;  // 海の日 (7月第3月曜)
+  if (m === 9 && isNthMonday(date, 3)) return true;  // 敬老の日 (9月第3月曜)
+  if (m === 10 && isNthMonday(date, 2)) return true; // スポーツの日 (10月第2月曜)
+
+  // 3. 春分の日・秋分の日
+  if (m === 3 && d === getSpringEquinoxDay(y)) return true;
+  if (m === 9 && d === getAutumnEquinoxDay(y)) return true;
+
+  return false;
+}
+
+/**
+ * 【Step 2】土日・祝日・振替休日・国民の休日（シルバーウィーク等）すべてを含めた休日判定
+ */
+export function isHolidayOrWeekend(date: Date): boolean {
+  const dayOfWeek = date.getDay();
+
+  // 1. 土曜日(6) または 日曜日(0) は無条件で休日
+  if (dayOfWeek === 0 || dayOfWeek === 6) return true;
+
+  // 2. 純粋な祝日なら休日
+  if (isNationalHoliday(date)) return true;
+
+  // 3. 振替休日の正確な判定（日曜日が「純粋な祝日」だった場合の翌平日）
+  let checkDate = new Date(date);
+  checkDate.setDate(checkDate.getDate() - 1);
+  while (checkDate.getDay() !== 0) { // 直近の日曜日まで遡る
+    if (!isNationalHoliday(checkDate)) break;
+    checkDate.setDate(checkDate.getDate() - 1);
+  }
+  if (checkDate.getDay() === 0 && isNationalHoliday(checkDate)) {
+    return true; // 日曜日が祝日だったので振替休日
+  }
+
+  // 4. 国民の休日（シルバーウィーク等：前日と翌日の両方が「純粋な祝日」に挟まれた平日）
+  const prevDay = new Date(date);
+  prevDay.setDate(date.getDate() - 1);
+  const nextDay = new Date(date);
+  nextDay.setDate(date.getDate() + 1);
+
+  if (isNationalHoliday(prevDay) && isNationalHoliday(nextDay)) {
+    return true;
+  }
+
+  return false;
+}
