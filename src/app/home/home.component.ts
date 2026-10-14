@@ -284,23 +284,27 @@ export class HomeComponent implements OnInit {
         await deleteDoc(boardRef);
         alert('ボードを削除しました');
       } else {
-        const hasAdmin = updatedMembers.some(m => m.role === 'admin');
-
-        if (!hasAdmin) {
-          // 残ったメンバーからランダムで1人を管理者（admin）に昇格
-          const randomIndex = Math.floor(Math.random() * updatedMembers.length);
-          updatedMembers[randomIndex] = {
-            ...updatedMembers[randomIndex],
-            role: 'admin'
-          };
-          alert(`管理者権限が「${updatedMembers[randomIndex].displayName}」さんに引き継がれました。`);
-        }
-
         const memberUids = updatedMembers.map(m => m.uid);
-        await updateDoc(boardRef, {
+        const updateData: any = {
           members: updatedMembers,
           memberUids: memberUids
-        });
+        };
+
+        if (boardData['ownerId'] === this.currentUser.uid) {
+          updateData.ownerId = updatedMembers[0].uid;
+        }
+
+        const hasAdmin = updatedMembers.some(m => m.role === 'admin');
+        if (!hasAdmin) {
+          updatedMembers[0] = {
+            ...updatedMembers[0],
+            role: 'admin'
+          };
+          updateData.members = updatedMembers;
+          alert(`管理者権限が「${updatedMembers[0].displayName}」さんに引き継がれました。`);
+        }
+
+        await updateDoc(boardRef, updateData);
         alert('ボードから削除されました');
       }
 

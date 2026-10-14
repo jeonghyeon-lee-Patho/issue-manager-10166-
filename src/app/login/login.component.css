@@ -137,6 +137,37 @@
   text-decoration: underline;
 }
 
+/* メッセージボックス */
+.error-msg-box {
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  font-size: 0.825rem;
+  padding: 10px 12px;
+  border-radius: 8px;
+  margin-bottom: 14px;
+  text-align: left;
+  white-space: pre-wrap;
+}
+
+.resend-msg-box {
+  background-color: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #16a34a;
+  font-size: 0.825rem;
+  padding: 10px 12px;
+  border-radius: 8px;
+  margin-bottom: 14px;
+  cursor: pointer;
+  text-align: left;
+  font-weight: 600;
+  transition: background-color 0.2s;
+}
+
+.resend-msg-box:hover {
+  background-color: #dcfce7;
+}
+
 /* アクションボタン */
 .btn-primary {
   width: 100%;
@@ -161,38 +192,6 @@
 
 .btn-primary:active {
   transform: translateY(0);
-}
-
-/* メッセージボックス */
-.error-msg-box {
-  background-color: #fef2f2;
-  border: 1px solid #fecaca;
-  color: #dc2626;
-  font-size: 0.825rem;
-  padding: 10px 12px;
-  border-radius: 8px;
-  margin-bottom: 14px;
-  text-align: left;
-
-  white-space: pre-wrap;
-}
-
-.resend-msg-box {
-  background-color: #f0fdf4;
-  border: 1px solid #bbf7d0;
-  color: #16a34a;
-  font-size: 0.825rem;
-  padding: 10px 12px;
-  border-radius: 8px;
-  margin-bottom: 14px;
-  cursor: pointer;
-  text-align: left;
-  font-weight: 600;
-  transition: background-color 0.2s;
-}
-
-.resend-msg-box:hover {
-  background-color: #dcfce7;
 }
 
 /* モード切替テキスト */

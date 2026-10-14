@@ -58,7 +58,7 @@ export class LoginComponent implements OnInit {
         const credential = await createUserWithEmailAndPassword(this.auth, this.email.trim(), this.password);
         await sendEmailVerification(credential.user);
         alert('登録確認メールを送信しました。メール内のリンクをクリックして登録を完了させてください。\n\n※メールが届かない場合は、迷惑メール（スパム）フォルダもご確認ください。');
-        await signOut(this.auth); // 新規登録後も認証完了までログインさせない場合
+        await signOut(this.auth);
       } else {
         const credential = await signInWithEmailAndPassword(this.auth, this.email.trim(), this.password);
         // メール認証チェック

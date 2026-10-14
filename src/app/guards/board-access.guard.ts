@@ -21,7 +21,6 @@ export const boardAccessGuard: CanActivateFn = async (route, state) => {
     const boardSnap = await getDoc(boardRef);
 
     if (!boardSnap.exists()) {
-      // ボードが存在しない
       alert('このボードは存在しません');
       router.navigate(['/home']);
       return false;
