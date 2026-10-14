@@ -1,0 +1,187 @@
+<!-- archive.component.html -->
+
+<div class="archive-container">
+  <div class="archive-header">
+    <h2>📦 アーカイブ</h2>
+    <p class="archive-description">完了・退避された課題を保管しています</p>
+  </div>
+
+  <div class="archive-toolbar">
+    <!-- ★ 1. Tasks / Backlog 共通の伸縮検索UI -->
+    <div class="search-section">
+      <div class="search-input-wrapper" [class.expanded]="showSearchInput" [class.active]="showSearchInput">
+        <i class="fas fa-search"></i>
+        <input type="text" class="search-input" placeholder="検索..." [(ngModel)]="searchQuery"
+          (input)="onSearchChange()" (keyup.enter)="collapseSearchInput()" (mousedown)="expandSearchInput()"
+          (blur)="onSearchInputBlur()" [readonly]="!showSearchInput" #searchInputRef>
+      </div>
+    </div>
+
+    <!-- 並べ替え -->
+    <div class="toolbar-group">
+      <label for="sortBy" class="toolbar-label">並べ替え:</label>
+      <select id="sortBy" [(ngModel)]="sortBy" (change)="onSortChange()" class="toolbar-select">
+        <option value="newest">最新順</option>
+        <option value="oldest">古い順</option>
+        <option value="title">タイトル順</option>
+      </select>
+    </div>
+
+    <!-- ★ 2. ステータスフィルター（定義通りの順序で全リストを表示） -->
+    <div class="toolbar-group">
+      <label for="filterStatus" class="toolbar-label">ステータス:</label>
+      <select id="filterStatus" [(ngModel)]="filterStatus" (change)="onFilterChange()" class="toolbar-select">
+        <option value="all">すべて</option>
+        <option *ngFor="let status of getAllStatuses()" [value]="status">{{ status }}</option>
+      </select>
+    </div>
+
+    <!-- ★ 2. 担当者フィルター（全ボードメンバーを表示） -->
+    <div class="toolbar-group">
+      <label for="filterAssignee" class="toolbar-label">担当者:</label>
+      <select id="filterAssignee" [(ngModel)]="filterAssignee" (change)="onFilterChange()" class="toolbar-select">
+        <option value="all">全員</option>
+        <option *ngFor="let memberName of getAllMembers()" [value]="memberName">{{ memberName }}</option>
+      </select>
+    </div>
+
+    <div class="toolbar-spacer"></div>
+
+    <button class="btn-delete-all" (click)="deleteAllArchived()" *ngIf="archivedTasks.length > 0" title="すべてのアーカイブを削除">
+      🗑️ すべて削除
+    </button>
+  </div>
+
+  <div class="archive-content">
+    <!-- 空状態（Empty State）カード風デザイン -->
+    <div *ngIf="archivedTasks.length === 0" class="empty-state">
+      <div class="empty-state-card">
+        <div class="empty-icon-wrapper">
+          <span class="empty-icon">📦</span>
+        </div>
+        <h3>保管された課題はありません</h3>
+        <p>完了した課題やバックログから退避した課題がここに集まります。<br>検索やフィルターの条件も確認してみてください。</p>
+      </div>
+    </div>
+
+    <div *ngIf="archivedTasks.length > 0" class="archive-list">
+      <div class="archive-stats">
+        <span class="stat-badge">合計 {{ archivedTasks.length }} 件</span>
+      </div>
+
+      <div class="archive-cards-grid">
+        <div *ngFor="let task of archivedTasks" class="archive-task-card" (click)="onTaskCardClick(task)">
+          <div class="card-top-row">
+            <div class="task-title-area">
+              <span class="task-title" [title]="task.title">{{ task.title }}</span>
+            </div>
+
+            <div class="card-actions-top-right">
+              <button class="btn-card-action btn-move" (click)="toggleMoveOptions(task, $event)" title="移動先を選択">
+                ▶️ 移動
+              </button>
+              <button class="btn-card-action btn-delete" (click)="deleteTask(task, $event)" title="削除">
+                🗑️ 削除
+              </button>
+            </div>
+          </div>
+
+          <div *ngIf="activeMoveTaskId === task.id" class="inline-picker-panel" (click)="$event.stopPropagation()">
+            <span class="picker-title">移動先を選択:</span>
+            <div class="picker-buttons">
+              <!-- バックログカテゴリー -->
+              <button class="btn-picker-item btn-picker-backlog" (click)="moveToDestination(task, 'backlog:未対応', $event)">
+                📋 未対応
+              </button>
+              <button class="btn-picker-item btn-picker-backlog" (click)="moveToDestination(task, 'backlog:検討中', $event)">
+                📋 検討中
+              </button>
+              <!-- ボードのカラム -->
+              <button *ngFor="let col of columns" class="btn-picker-item" (click)="moveToDestination(task, 'board:' + col, $event)">
+                📌 {{ col }}
+              </button>
+            </div>
+          </div>
+
+          <div class="card-bottom-row">
+            <div class="bottom-left-area">
+              <div class="meta-row-1">
+                <span *ngIf="task.priority" class="priority-badge" [class]="'priority-' + task.priority">
+                  {{ task.priority }}
+                </span>
+                <!-- 重要性（高/中/低） -->
+                <span *ngIf="task.importance" class="meta-tag importance-tag">
+                  {{ getPriorityLabel(task.importance) }}
+                </span>
+                <!-- 期限 -->
+                <span *ngIf="task.startDate || task.dueDate" class="meta-tag date-range-tag">
+                  📅 {{ formatDateRange(task.startDate, task.dueDate) }}
+                </span>
+              </div>
+
+              <div class="meta-row-2">
+                <button *ngIf="task.subtasks && task.subtasks.length > 0" class="icon-btn subtask-btn"
+                        [class.active]="activeDetailType[task.id] === 'subtasks'"
+                        (click)="toggleDetailType(task, 'subtasks', $event)" title="サブタスクを確認">
+                  ✓ {{ getCompletedSubtasks(task) }}/{{ task.subtasks.length }}
+                </button>
+                <button *ngIf="task.comments && task.comments.length > 0" class="icon-btn comment-btn"
+                        [class.active]="activeDetailType[task.id] === 'comments'"
+                        (click)="toggleDetailType(task, 'comments', $event)" title="コメントを確認">
+                  💬 {{ task.comments.length }}
+                </button>
+                <button *ngIf="task.assignees && task.assignees.length > 0" class="icon-btn assignee-btn"
+                        [class.active]="activeDetailType[task.id] === 'assignees'"
+                        (click)="toggleDetailType(task, 'assignees', $event)" title="担当者を確認">
+                  👤 {{ task.assignees.length }}
+                </button>
+              </div>
+            </div>
+
+            <div class="bottom-right-area">
+              <div *ngIf="task.archivedBy" class="archived-record-box" [title]="getMemberDisplayName(task.archivedBy) + ' (' + formatArchivedDate(task.archivedAt) + ')'">
+                <span class="archived-user">📦 {{ getMemberDisplayName(task.archivedBy) }}</span>
+                <span class="archived-date"> {{ formatArchivedDate(task.archivedAt) }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div *ngIf="activeDetailType[task.id]" class="inline-detail-panel" (click)="$event.stopPropagation()">
+            <div *ngIf="activeDetailType[task.id] === 'subtasks'" class="detail-section">
+              <span class="detail-title">✓ サブタスク:</span>
+              <div class="detail-list">
+                <div *ngFor="let st of task.subtasks" class="detail-item">
+                  <span [class.completed]="st.completed">{{ st.completed ? '☑' : '☐' }} {{ st.title }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div *ngIf="activeDetailType[task.id] === 'comments'" class="detail-section">
+              <span class="detail-title">💬 コメント:</span>
+              <div class="detail-list">
+                <div *ngFor="let c of task.comments" class="detail-item comment-item">
+                  <strong>{{ getMemberDisplayName(c.author) }}</strong>: {{ c.text }}
+                </div>
+              </div>
+            </div>
+
+            <div *ngIf="activeDetailType[task.id] === 'assignees'" class="detail-section">
+              <span class="detail-title">👥 担当者:</span>
+              <div class="detail-list assignee-list">
+                <div *ngFor="let a of task.assignees" class="detail-item assignee-item">
+                  <img [src]="getAssigneeAvatar(a)" class="avatar-img" />
+                  <span>{{ getMemberDisplayName(a) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <app-task-edit-modal *ngIf="showTaskEditModal && selectedTask" [isOpen]="showTaskEditModal" [boardId]="boardId"
+    [task]="selectedTask" [columns]="columns" [boardMembers]="boardMembers" [currentUserName]="currentUserName"
+    (save)="onTaskEditModalSave($any($event))" (close)="onTaskEditModalClose()">
+  </app-task-edit-modal>
+</div>

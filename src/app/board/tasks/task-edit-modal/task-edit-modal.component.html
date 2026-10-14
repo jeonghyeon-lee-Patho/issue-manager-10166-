@@ -30,22 +30,25 @@
       <!-- ステータス -->
       <div class="form-group">
         <label>ステータス</label>
-        <select [(ngModel)]="editingTask.status" class="form-control">
+        <select *ngIf="!isBacklogTask" [(ngModel)]="editingTask.status" class="form-control">
           <option *ngFor="let col of columns" [value]="col">{{ col }}</option>
-        </select>
+        </select>      
+        <!-- バックログ課題の場合: 固定表示（編集不可） -->
+        <input *ngIf="isBacklogTask" type="text" class="form-control" 
+          [value]="'📋 バックログ (' + (editingTask.backlogCategory || 'Backlog') + ')'" disabled />
       </div>
 
-      <!-- 優先度 -->
+      <!-- 重要性 -->   
       <div class="form-group">
-        <label>優先度</label>
+        <label>重要性</label>
         <div class="priority-buttons">
-          <button [class.active]="editingTask.priority === undefined" (click)="editingTask.priority = undefined"
+          <button [class.active]="editingTask.importance === undefined" (click)="editingTask.importance = undefined"
             class="btn-priority btn-priority-none">
             なし
           </button>
-          <button *ngFor="let p of priorities" [class.active]="editingTask.priority === p"
-            (click)="editingTask.priority = p" [class]="'btn-priority btn-priority-' + p">
-            {{ getPriorityLabel(p) }}
+          <button *ngFor="let p of priorities" [class.active]="editingTask.importance === p"
+            (click)="editingTask.importance = p" [class]="'btn-priority btn-priority-' + p">
+            {{ getPriorityLabel(p) }} 
           </button>
         </div>
       </div>
@@ -61,6 +64,7 @@
           <span class="field-label">開始日:</span>
           <div class="input-box flex-fill">
             <input type="date" [ngModel]="getStartDateString(editingTask.startDate)"
+              [max]="getDateString(editingTask.dueDate)"
               (ngModelChange)="onStartDateChange($event)" class="form-control date-input" />
           </div>
           <div class="clear-btn-slot"></div>
@@ -70,7 +74,9 @@
         <div class="date-time-row">
           <span class="field-label">期限:</span>
           <div class="input-box flex-2">
-            <input type="date" [ngModel]="getDateString(editingTask.dueDate)" (ngModelChange)="onDateChange($event)"
+            <input type="date" [ngModel]="getDateString(editingTask.dueDate)" 
+              [min]="getStartDateString(editingTask.startDate)"
+              (ngModelChange)="onDateChange($event)"
               class="form-control date-input" />
           </div>
           <div class="input-box flex-1">

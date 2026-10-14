@@ -1,0 +1,260 @@
+<div class="backlog-container">
+  <div class="backlog-header">
+    <h2>📋 バックログ</h2>
+    <p class="backlog-description">未対応・検討中の課題を管理します</p>
+  </div>
+
+  <!-- 検索・フィルター・ソートバー -->
+  <div class="search-filter-bar">
+    <!-- 検索ボックス -->
+    <div class="search-section">
+      <div class="search-input-wrapper" [class.expanded]="showSearchInput" [class.active]="showSearchInput">
+        <i class="fas fa-search"></i>
+        <input type="text" class="search-input" placeholder="検索..." [(ngModel)]="searchQuery"
+          (input)="onSearchChange($event)" (keyup.enter)="collapseSearchInput()" (mousedown)="expandSearchInput()"
+          (blur)="onSearchInputBlur()" [readonly]="!showSearchInput" #searchInputRef>
+      </div>
+    </div>
+
+    <!-- フィルターボタン -->
+    <div class="filter-button-section">
+      <button class="btn-filter-toggle" (click)="toggleFilterPanel()" [class.active]="showFilterPanel"
+        [class.filtered]="hasActiveFilters()" title="フィルター">
+        <i class="fas fa-sliders-h"></i>
+      </button>
+
+      <!-- フィルターパネル -->
+      <div *ngIf="showFilterPanel" class="filter-panel">
+        <div class="filter-item">
+          <label>優先度</label>
+          <div class="checkbox-group">
+            <label class="checkbox-label">
+              <input type="checkbox" [checked]="tempCompPriorityFilter.includes('P0')"
+                (change)="toggleTempCompPriorityFilter('P0')"> P0 (最優先)
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [checked]="tempCompPriorityFilter.includes('P1')"
+                (change)="toggleTempCompPriorityFilter('P1')"> P1 (高)
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [checked]="tempCompPriorityFilter.includes('P2')"
+                (change)="toggleTempCompPriorityFilter('P2')"> P2 (中)
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [checked]="tempCompPriorityFilter.includes('P3')"
+                (change)="toggleTempCompPriorityFilter('P3')"> P3 (低)
+            </label>
+          </div>
+        </div>
+
+        <div class="filter-item">
+          <label>重要性</label>
+          <div class="checkbox-group">
+            <label class="checkbox-label"><input type="checkbox" [checked]="tempPriorityFilter.includes('high')"
+                (change)="toggleTempPriorityFilter('high')"> 高</label>
+            <label class="checkbox-label"><input type="checkbox" [checked]="tempPriorityFilter.includes('medium')"
+                (change)="toggleTempPriorityFilter('medium')"> 中</label>
+            <label class="checkbox-label"><input type="checkbox" [checked]="tempPriorityFilter.includes('low')"
+                (change)="toggleTempPriorityFilter('low')"> 低</label>
+          </div>
+        </div>
+
+        <div class="filter-item">
+          <label>担当者</label>
+          <div class="checkbox-group">
+            <label *ngFor="let member of boardMembers" class="checkbox-label">
+              <input type="checkbox" [checked]="tempAssigneeFilter.includes(getMemberDisplayName(member))"
+                (change)="toggleTempAssigneeFilter(getMemberDisplayName(member))">
+              {{ getMemberDisplayName(member) }}
+            </label>
+          </div>
+        </div>
+
+        <div class="filter-item">
+          <label>期限</label>
+          <select class="filter-select" [(ngModel)]="tempDueDateFilter">
+            <option value="">すべての期限</option>
+            <option value="overdue">期限超過</option>
+            <option value="today">今日</option>
+            <option value="this-week">今週</option>
+            <option value="this-month">今月</option>
+            <option value="no-due">期限なし</option>
+          </select>
+        </div>
+
+        <div class="filter-buttons">
+          <button class="btn-apply" (click)="applyFilters()">✓ 適用</button>
+          <button class="btn-filter-reset" (click)="resetFilters()">✕ リセット</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ソートボタン -->
+    <div class="sort-button-section">
+      <button class="btn-sort-toggle" (click)="toggleSortPanel()" [class.active]="showSortPanel"
+        [class.sorted]="sortKey !== 'none'" title="並び替え">
+        <i class="fas fa-sort"></i>
+      </button>
+
+      <div *ngIf="showSortPanel" class="sort-panel">
+        <div class="filter-item">
+          <label>並び替え基準</label>
+          <div class="sort-options">
+            <button class="sort-option-btn" [class.active]="tempSortKey === 'title'"
+              (click)="tempSortKey = 'title'">タイトル</button>
+            <button class="sort-option-btn" [class.active]="tempSortKey === 'importance'"
+              (click)="tempSortKey = 'importance'">重要性</button>
+            <button class="sort-option-btn" [class.active]="tempSortKey === 'dueDate'"
+              (click)="tempSortKey = 'dueDate'">期限</button>
+            <button class="sort-option-btn" [class.active]="tempSortKey === 'priority'"
+              (click)="tempSortKey = 'priority'">優先度</button>
+          </div>
+        </div>
+
+        <div class="filter-item" *ngIf="tempSortKey !== 'none'">
+          <label>順序</label>
+          <div class="sort-order-toggle">
+            <button class="order-btn" [class.active]="tempSortOrder === 'asc'" (click)="tempSortOrder = 'asc'">↑
+              昇順</button>
+            <button class="order-btn" [class.active]="tempSortOrder === 'desc'" (click)="tempSortOrder = 'desc'">↓
+              降順</button>
+          </div>
+        </div>
+
+        <div class="filter-buttons">
+          <button class="btn-apply" (click)="applySort()">✓ 適用</button>
+          <button class="btn-filter-reset" (click)="resetSort()">✕ リセット</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="backlog-content">
+    <ng-container *ngFor="let status of backlogStatuses">
+      <div class="backlog-section">
+        <div class="section-header">
+          <h3>{{ status }}</h3>
+          <span class="task-count">{{ (getGroupedTasks()[status] || []).length }}件</span>
+        </div>
+
+        <div class="task-list" (dragover)="onDragOver($event)" (drop)="onDrop($event, status)">
+          <div *ngIf="(getGroupedTasks()[status] || []).length === 0" class="empty-state">
+            <span>タスクはありません</span>
+          </div>
+
+          <div *ngFor="let task of getGroupedTasks()[status]" class="backlog-task-card"
+            [class.dragging]="draggedTask?.id === task.id" [draggable]="true"
+            (dragstart)="onCardDragStart($event, task, status)" (dragend)="onCardDragEnd()"
+            (click)="onTaskCardClick(task)">
+
+            <div class="card-content-wrapper">
+              <div class="card-left-main">
+                <div class="task-title-area">
+                  <span class="task-title" [title]="task.title">{{ task.title }}</span>
+                </div>
+
+                <div class="bottom-left-area">
+                  <div class="meta-row-1">
+                    <!-- 優先度（P0~P3） -->
+                    <span *ngIf="task.priority" class="priority-badge" [class]="'priority-' + task.priority">
+                      {{ task.priority }}
+                    </span>
+                    <!-- 重要性（高/中/低） -->
+                    <span *ngIf="task.importance" class="meta-tag importance-tag">
+                      {{ getPriorityLabel(task.importance) }}
+                    </span>
+                    <!-- 期限（カレンダーアイコン＋日付） -->
+                    <span *ngIf="task.startDate || task.dueDate" class="meta-tag date-range-tag">
+                      📅 {{ formatDateRange(task.startDate, task.dueDate) }}
+                    </span>
+                  </div>
+
+                  <div class="meta-row-2">
+                    <button *ngIf="task.subtasks && task.subtasks.length > 0" class="icon-btn subtask-btn"
+                      [class.active]="activeDetailType[task.id] === 'subtasks'"
+                      (click)="toggleDetailType(task, 'subtasks', $event)" title="サブタスクを確認">
+                      ✓ {{ getCompletedSubtasks(task) }}/{{ task.subtasks.length }}
+                    </button>
+                    <button *ngIf="task.comments && task.comments.length > 0" class="icon-btn comment-btn"
+                      [class.active]="activeDetailType[task.id] === 'comments'"
+                      (click)="toggleDetailType(task, 'comments', $event)" title="コメントを確認">
+                      💬 {{ task.comments.length }}
+                    </button>
+                    <button *ngIf="task.assignees && task.assignees.length > 0" class="icon-btn assignee-btn"
+                      [class.active]="activeDetailType[task.id] === 'assignees'"
+                      (click)="toggleDetailType(task, 'assignees', $event)" title="担当者を確認">
+                      👤 {{ task.assignees.length }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card-right-actions">
+                <button class="btn-card-action btn-move" (click)="toggleMoveOptions(task, $event)" title="ボードに移動">
+                  ▶️ 移動
+                </button>
+                <button class="btn-card-action btn-archive" (click)="archiveTask(task, $event)" title="アーカイブ">
+                  📦 保管
+                </button>
+                <button class="btn-card-action btn-delete" (click)="deleteTask(task, $event)" title="削除">
+                  🗑️ 削除
+                </button>
+              </div>
+            </div>
+
+            <div *ngIf="activeMoveTaskId === task.id" class="inline-picker-panel" (click)="$event.stopPropagation()">
+              <span class="picker-title">移動先のリストを選択:</span>
+              <div class="picker-buttons">
+                <button *ngFor="let col of columns" class="btn-picker-item" (click)="moveToBoard(task, col, $event)">
+                  📌 {{ col }}
+                </button>
+              </div>
+            </div>
+
+            <div *ngIf="activeDetailType[task.id]" class="inline-detail-panel" (click)="$event.stopPropagation()">
+              <div *ngIf="activeDetailType[task.id] === 'subtasks'" class="detail-section">
+                <span class="detail-title">✓ サブタスク:</span>
+                <div class="detail-list">
+                  <div *ngFor="let st of task.subtasks" class="detail-item">
+                    <span [class.completed]="st.completed">{{ st.completed ? '☑' : '☐' }} {{ st.title }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div *ngIf="activeDetailType[task.id] === 'comments'" class="detail-section">
+                <span class="detail-title">💬 コメント:</span>
+                <div class="detail-list">
+                  <div *ngFor="let c of task.comments" class="detail-item comment-item">
+                    <strong>{{ getMemberDisplayName(c.author) }}</strong>: {{ c.text }}
+                  </div>
+                </div>
+              </div>
+
+              <div *ngIf="activeDetailType[task.id] === 'assignees'" class="detail-section">
+                <span class="detail-title">👥 担当者:</span>
+                <div class="detail-list assignee-list">
+                  <div *ngFor="let a of task.assignees" class="detail-item assignee-item">
+                    <img [src]="getAssigneeAvatar(a)" class="avatar-img" />
+                    <span>{{ getMemberDisplayName(a) }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="add-task-section">
+          <button class="btn-add-task-toggle" (click)="openCreateModal(status)">
+            ＋ 課題を追加
+          </button>
+        </div>
+      </div>
+    </ng-container>
+  </div>
+
+  <app-task-edit-modal *ngIf="showTaskEditModal && selectedTask" [isOpen]="showTaskEditModal" [boardId]="boardId"
+    [task]="selectedTask" [columns]="columns" [boardMembers]="boardMembers" [currentUserName]="currentUserName"
+    (save)="onTaskEditModalSave($any($event))" (close)="onTaskEditModalClose()">
+  </app-task-edit-modal>
+</div>

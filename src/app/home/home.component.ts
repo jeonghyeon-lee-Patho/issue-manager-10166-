@@ -26,7 +26,7 @@ export class HomeComponent implements OnInit {
   newBoardId = '';
   userName = '';
 
-  columns: string[] = ['TODO', 'IN PROGRESS', 'IN REVIEW', 'DONE'];
+  columns: string[] = ['TODO', '進行中', '確認中', '完了'];
   newColumnInput = '';
   showAddColumnInput = false;
 
@@ -217,7 +217,7 @@ export class HomeComponent implements OnInit {
     this.newBoardName = '';
     this.newBoardId = '';
     this.userName = '';
-    this.columns = ['TODO', 'IN PROGRESS', 'IN REVIEW', 'DONE'];
+    this.columns = ['TODO', '進行中', '確認中', '完了'];
     this.newColumnInput = '';
     this.showAddColumnInput = false;
     this.modalStep = 1;

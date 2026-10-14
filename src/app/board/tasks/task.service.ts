@@ -21,20 +21,21 @@ export interface TaskActivity {
   user: string;
   action: string;
   timestamp: number;
-} 
+}
 
 export interface Task {
   id: string;
   title: string;
   status: string;
-  // ==========================
-  startDate?: number; // 開始時間
-  estimatedHours?: number; // 予定工数
-  actualHours?: number;    // 実績工数
-  // ==========================
+  backlogCategory?: '未対応' | '検討中';
+  
+  startDate?: number; 
+  estimatedHours?: number; 
+  actualHours?: number;    
   dueDate?: number;
   hasTime?: boolean;
-  priority?: 'low' | 'medium' | 'high';
+  importance?: 'low' | 'medium' | 'high';
+  priority?: 'P0' | 'P1' | 'P2' | 'P3';
   progress?: number;
   description?: string;
   subtasks?: Subtask[];
@@ -44,6 +45,67 @@ export interface Task {
   activities?: TaskActivity[];
   createdAt?: number;
   updatedAt?: number;
+  archived?: boolean;          // アーカイブ状態フラグ
+  archivedAt?: number;         // アーカイブした日時
+  archivedBy?: string;         // アーカイブした者
+}
+
+export function calculateComprehensivePriority(
+  dueDate?: number, 
+  importance?: 'low' | 'medium' | 'high'
+): 'P0' | 'P1' | 'P2' | 'P3' {
+  const imp = importance || 'low';
+  
+  let urgency: 'high' | 'medium' | 'low' = 'low';
+  
+  if (dueDate) {
+    // 今日の 00:00:00
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // 期限日の 00:00:00
+    const deadlineDate = new Date(dueDate);
+    deadlineDate.setHours(0, 0, 0, 0);
+
+    // カレンダー上の日数差を計算
+    const diffMs = deadlineDate.getTime() - today.getTime();
+    const daysDiff = Math.round(diffMs / (1000 * 60 * 60 * 24));
+    
+    if (daysDiff <= 3) {
+      // 期限切れ (daysDiff < 0) または 3日以内 (0〜3日)
+      urgency = 'high';
+    } else if (daysDiff <= 7) {
+      // 4日〜7日（1週間以内）
+      urgency = 'medium';
+    }
+  }
+
+  // マトリクス判定
+  if (urgency === 'high') {
+    if (imp === 'high') return 'P0';
+    if (imp === 'medium') return 'P1';
+    return 'P2';
+  } else if (urgency === 'medium') {
+    if (imp === 'high') return 'P1';
+    if (imp === 'medium') return 'P2';
+    return 'P3';
+  } else { // urgency === 'low'
+    if (imp === 'high') return 'P2';
+    return 'P3';
+  }
+}
+
+export function formatTaskStatusName(task: { status?: string; backlogCategory?: string; archived?: boolean }): string {
+  if (task.archived) {
+    return '📦 [アーカイブ]';
+  }
+  if (task.backlogCategory) {
+    return `📋 [バックログ: ${task.backlogCategory}]`;
+  }
+  if (task.status) {
+    return `📌 [${task.status}]`;
+  }
+  return '未設定';
 }
 
 export function addActivityLog(task: Task, user: string, actionText: string): TaskActivity[] {
@@ -57,7 +119,7 @@ export function addActivityLog(task: Task, user: string, actionText: string): Ta
   return [newActivity, ...currentActivities]; // 最新ログを先頭に追加
 }
 
-// 優先度ラベル変換用ヘルパー
+// 重要性ラベル変換用ヘルパー
 function getPriorityText(p?: string): string {
   if (p === 'high') return '高';
   if (p === 'medium') return '中';
@@ -80,6 +142,12 @@ function formatDueDateText(dueDate?: number, hasTime?: boolean): string {
   return `${y}/${m}/${date}`;
 }
 
+function getTaskArea(task: Task): 'board' | 'backlog' | 'archive' {
+  if (task.archived) return 'archive';
+  if (task.backlogCategory) return 'backlog';
+  return 'board';
+}
+
 export function generateTaskDiffLog(oldTask: Task, newTask: Task): string {
   const changes: string[] = [];
 
@@ -89,13 +157,19 @@ export function generateTaskDiffLog(oldTask: Task, newTask: Task): string {
   }
 
   // 2. ステータスの変更
-  if (oldTask.status !== newTask.status) {
-    changes.push(`ステータスを [${oldTask.status}] → [${newTask.status}] に変更`);
+  const oldStatusStr = formatTaskStatusName(oldTask);
+  const newStatusStr = formatTaskStatusName(newTask);
+
+  if (oldStatusStr !== newStatusStr) {
+    const isAreaChanged = getTaskArea(oldTask) !== getTaskArea(newTask);
+    const prefix = isAreaChanged ? 'カテゴリ移動' : 'ステータス変更';
+    changes.push(`${prefix}: ${oldStatusStr} → ${newStatusStr}`);
   }
 
-  // 3. 優先度の変更
-  if (oldTask.priority !== newTask.priority) {
-    changes.push(`優先度を [${getPriorityText(oldTask.priority)}] → [${getPriorityText(newTask.priority)}] に変更`);
+  // 3. 重要性の変更
+  if (oldTask.importance !== newTask.importance) {
+    const getImpText = (i?: string) => i === 'high' ? '高' : i === 'medium' ? '中' : i === 'low' ? '低' : 'なし';
+    changes.push(`重要性を [${getImpText(oldTask.importance)}] → [${getImpText(newTask.importance)}] に変更`);
   }
 
   // 4. 期限の変更
@@ -107,7 +181,6 @@ export function generateTaskDiffLog(oldTask: Task, newTask: Task): string {
     }
   }
 
-  // ===== ここから追加（開始日の変更ログ） =====
   if (oldTask.startDate !== newTask.startDate) {
     if (!newTask.startDate) {
       changes.push('開始日を解除');
@@ -126,7 +199,6 @@ export function generateTaskDiffLog(oldTask: Task, newTask: Task): string {
     const newVal = newTask.actualHours != null ? `${newTask.actualHours}h` : '未設定';
     changes.push(`実績工数を [${oldVal}] → [${newVal}] に変更`);
   }
-  // ==========================
 
   // 5. 説明文の変更
   if ((oldTask.description || '') !== (newTask.description || '')) {
@@ -161,6 +233,7 @@ export function generateTaskDiffLog(oldTask: Task, newTask: Task): string {
   return changes.length > 0 ? changes.join(' / ') : '';
 }
 
+
 @Injectable({
   providedIn: 'root'
 })
@@ -171,8 +244,8 @@ export class TaskService {
     boardId: string,
     columns: string[],
     tasks: Task[],
-    expectedLastUpdatedAt?: number 
-  ): Promise<number> {              
+    expectedLastUpdatedAt?: number
+  ): Promise<number> {
     const boardRef = doc(this.firestore, `boards/${boardId}`);
 
     // 楽観的ロックの衝突判定
@@ -188,14 +261,24 @@ export class TaskService {
 
     const now = Date.now();
     try {
-      const cleanedTasks = tasks.map(task => cleanUndefinedFields(task));
+      // ★ タスクを整形：backlogCategory のクリーンアップを含む
+      const cleanedTasks = tasks.map(task => {
+        let cleaned = cleanUndefinedFields(task);
+        // backlogCategory が undefined または空文字の場合は削除
+        if (!cleaned.backlogCategory) {
+          const { backlogCategory, ...rest } = cleaned;
+          return rest;
+        }
+        return cleaned;
+      });
+      
       await setDoc(boardRef, {
         columns,
         tasks: cleanedTasks,
         lastUpdatedAt: now
       }, { merge: true });
 
-      return now; 
+      return now;
     } catch (err) {
       console.error('Firestore Write Error:', err);
       throw err;
@@ -261,11 +344,69 @@ export class TaskService {
   }
 
   /**
-   * 優先度のバッジクラス名を取得
+   * タスクをアーカイブする
    */
-  getPriorityClass(priority?: string): string {
-    if (!priority) return '';
-    return PRIORITY_CSS_CLASSES[priority as keyof typeof PRIORITY_CSS_CLASSES] || '';
+  archiveTask(tasks: Task[], taskId: string, archivedBy?: string): Task[] {
+    return tasks.map(t => {
+      if (t.id === taskId) {
+        return {
+          ...t,
+          archived: true,
+          archivedAt: Date.now(),
+          archivedBy: archivedBy || 'Unknown',
+          updatedAt: Date.now()
+        };
+      }
+      return t;
+    });
+  }
+
+  /**
+   * タスクをアーカイブ解除する
+   */
+  unarchiveTask(tasks: Task[], taskId: string): Task[] {
+    return tasks.map(t => {
+      if (t.id === taskId) {
+        const { archived, archivedAt, archivedBy, ...rest } = t;
+        return { ...rest, updatedAt: Date.now() };
+      }
+      return t;
+    });
+  }
+
+  /**
+   * アーカイブされていないタスクを取得
+   */
+  getActiveTasksByColumn(tasks: Task[], columnName: string): Task[] {
+    return tasks.filter(task => task.status === columnName && !task.archived);
+  }
+
+  /**
+   * アーカイブされたタスクを取得
+   */
+  getArchivedTasks(tasks: Task[]): Task[] {
+    return tasks.filter(task => task.archived);
+  }
+
+  /**
+   * バックログ用のステータスを定義
+   */
+  getBacklogStatuses(): string[] {
+    return ['未対応', '検討中'];
+  }
+
+  /**
+   * バックログタスクを取得
+   */
+  getBacklogTasks(tasks: Task[]): Task[] {
+    return tasks.filter(task => !!task.backlogCategory && !task.archived);
+  }
+
+  getPriorityText(p?: string): string {
+    if (p === 'high') return '高';
+    if (p === 'medium') return '中';
+    if (p === 'low') return '低';
+    return 'なし';
   }
 
   async updateSingleTaskWithLock(
@@ -282,10 +423,12 @@ export class TaskService {
 
     const boardData = snap.data();
     const currentTasks: Task[] = boardData['tasks'] || [];
- 
+
     // カラムが変更された場合の処理
     const currentColumns: string[] = boardData['columns'] || [];
-    if (!currentColumns.includes(updatedTask.status)) {
+    const isBacklogTask = !!updatedTask.backlogCategory;
+    
+    if (!currentColumns.includes(updatedTask.status) && !isBacklogTask && !updatedTask.archived) {
       throw new Error('COLUMN_NOT_FOUND_OR_CHANGED');
     }
 
@@ -309,7 +452,15 @@ export class TaskService {
       newTasks = [...currentTasks, taskToSave];
     }
 
-    const cleanedTasks = newTasks.map(task => cleanUndefinedFields(task));
+    const cleanedTasks = newTasks.map(task => {
+      let cleaned = cleanUndefinedFields(task);
+      // backlogCategory が undefined または空文字の場合は削除
+      if (!cleaned.backlogCategory) {
+        const { backlogCategory, ...rest } = cleaned;
+        return rest;
+      }
+      return cleaned;
+    });
 
     await setDoc(boardRef, {
       tasks: cleanedTasks,

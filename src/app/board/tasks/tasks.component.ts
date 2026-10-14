@@ -1,7 +1,7 @@
 import { Component, Input, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Task, TaskService, TaskActivity, addActivityLog, generateTaskDiffLog } from './task.service';
+import { Task, TaskService, TaskActivity, addActivityLog, generateTaskDiffLog, calculateComprehensivePriority, formatTaskStatusName } from './task.service';
 import { TaskCardComponent } from './task-card/task-card.component';
 import { TaskEditModalComponent } from './task-edit-modal/task-edit-modal.component';
 import { NotificationService } from '../../services/notification.service';
@@ -50,19 +50,21 @@ export class TasksComponent {
   showSearchInput: boolean = false;
 
   statusFilter: string[] = [];
+  compPriorityFilter: string[] = [];
   priorityFilter: string[] = [];
   assigneeFilter: string[] = [];
   dueDateFilter: string = '';
   showFilterPanel: boolean = false;
 
   tempStatusFilter: string[] = [];
+  tempCompPriorityFilter: string[] = [];
   tempPriorityFilter: string[] = [];
   tempAssigneeFilter: string[] = [];
   tempDueDateFilter: string = '';
 
-  sortKey: 'none' | 'title' | 'priority' | 'dueDate' = 'none';
+  sortKey: 'none' | 'title' | 'importance' | 'dueDate' | 'priority' = 'none';
   sortOrder: 'asc' | 'desc' = 'asc';
-  tempSortKey: 'none' | 'title' | 'priority' | 'dueDate' = 'none';
+  tempSortKey: 'none' | 'title' | 'importance' | 'dueDate' | 'priority' = 'none';
   tempSortOrder: 'asc' | 'desc' = 'asc';
   showSortPanel: boolean = false;
   private operationStartedTaskUpdatedAt?: number;
@@ -86,7 +88,7 @@ export class TasksComponent {
     }
   }
 
-  setSortKey(key: 'title' | 'priority' | 'dueDate'): void {
+  setSortKey(key: 'title' | 'importance' | 'dueDate' | 'priority'): void {
     this.sortKey = key;
     this.cdr.detectChanges();
   }
@@ -114,14 +116,19 @@ export class TasksComponent {
 
   getSortOrderLabel(order: 'asc' | 'desc'): string {
     if (this.sortKey === 'title') return order === 'asc' ? '(あ→ん)' : '(ん→あ)';
-    if (this.sortKey === 'priority') return order === 'asc' ? '(高→低)' : '(低→高)';
+    if (this.sortKey === 'importance') return order === 'asc' ? '(高→低)' : '(低→高)';
     if (this.sortKey === 'dueDate') return order === 'asc' ? '(古い順)' : '(新しい順)';
+    if (this.sortKey === 'priority') return order === 'asc' ? '(P0→P3)' : '(P3→P0)';
     return '';
   }
 
   // フィルター適用済みのタスク一覧を取得
   getFilteredTasks(): Task[] {
     const filtered = this.tasks.filter(task => {
+      // バックログまたアーカイブ済みはここでは除外
+      if (task.archived) return false;
+      if (task.backlogCategory) return false;  // backlogCategory が設定されているタスクは除外
+
       // 検索条件チェック
       if (this.searchQuery.trim()) {
         const query = this.searchQuery.toLowerCase();
@@ -131,8 +138,10 @@ export class TasksComponent {
         const matchesDesc = task.description ? task.description.toLowerCase().includes(query) : false;
         const matchesTags = task.tags ? task.tags.some(tag => tag.toLowerCase().includes(query)) : false;
         const matchesAssignees = task.assignees ? task.assignees.some(assignee => assignee.toLowerCase().includes(query)) : false;
+        const matchesSubtaks = task.subtasks ? task.subtasks.some(subtask => subtask.title.toLowerCase().includes(query)) : false;
 
-        const matchesSearch = matchesTitle || matchesDesc || matchesTags || matchesAssignees;
+
+        const matchesSearch = matchesTitle || matchesDesc || matchesTags || matchesAssignees || matchesSubtaks;
         if (!matchesSearch) return false;
       }
 
@@ -140,8 +149,16 @@ export class TasksComponent {
         return false;
       }
 
+      if (this.compPriorityFilter.length > 0) {
+        // 旧データ対応：保存されていない場合はその場で計算する
+        const p = task.priority || calculateComprehensivePriority(task.dueDate, task.importance);
+        if (!this.compPriorityFilter.includes(p)) {
+          return false;
+        }
+      }
+
       if (this.priorityFilter.length > 0) {
-        if (!task.priority || !this.priorityFilter.includes(task.priority)) {
+        if (!task.importance || !this.priorityFilter.includes(task.importance)) {
           return false;
         }
       }
@@ -207,7 +224,10 @@ export class TasksComponent {
     let isAEmpty = false;
     let isBEmpty = false;
 
-    if (this.sortKey === 'priority') {
+    if (this.sortKey === 'importance') {
+      isAEmpty = !a.importance;
+      isBEmpty = !b.importance;
+    } else if (this.sortKey === 'priority') {
       isAEmpty = !a.priority;
       isBEmpty = !b.priority;
     } else if (this.sortKey === 'dueDate') {
@@ -215,7 +235,7 @@ export class TasksComponent {
       isBEmpty = !b.dueDate;
     }
 
-    // 1. 未設定値（優先度なし・期限なし）は昇順/降順に関わらず常にリストの最後にする
+    // 1. 未設定値は昇順/降順に関わらず常にリストの最後にする
     if (isAEmpty && !isBEmpty) return 1;
     if (!isAEmpty && isBEmpty) return -1;
     if (isAEmpty && isBEmpty) return 0;
@@ -225,11 +245,17 @@ export class TasksComponent {
 
     if (this.sortKey === 'title') {
       comparison = a.title.localeCompare(b.title, 'ja');
+    } else if (this.sortKey === 'importance') {
+      // 重要性：高(3) -> 中(2) -> 低(1)
+      const importanceRank: { [key: string]: number } = { high: 3, medium: 2, low: 1 };
+      const rankA = importanceRank[a.importance!] || 0;
+      const rankB = importanceRank[b.importance!] || 0;
+      comparison = rankB - rankA;
     } else if (this.sortKey === 'priority') {
-      const priorityRank: { [key: string]: number } = { high: 3, medium: 2, low: 1 };
+      // 総合優先度：P0(4) -> P1(3) -> P2(2) -> P3(1)
+      const priorityRank: { [key: string]: number } = { 'P0': 4, 'P1': 3, 'P2': 2, 'P3': 1 };
       const rankA = priorityRank[a.priority!] || 0;
       const rankB = priorityRank[b.priority!] || 0;
-      // 標準（昇順）は 高 -> 中 -> 低
       comparison = rankB - rankA;
     } else if (this.sortKey === 'dueDate') {
       const aDate = new Date(a.dueDate!).setHours(0, 0, 0, 0);
@@ -302,15 +328,27 @@ export class TasksComponent {
     this.cdr.detectChanges();
   }
 
-  async moveTask(task: Task, newStatus: string) {
+  async moveTask(task: Task, newStatus: string, skipConfirm: boolean = false) {
     if (!this.boardId?.trim()) return;
 
     const oldStatus = task.status;
     if (oldStatus === newStatus) return;
 
-    const logText = `ステータスを [${oldStatus}] → [${newStatus}] に変更`;
+    if (!skipConfirm && !confirm(`タスク「${task.title}」を [${oldStatus}] → [${newStatus}] へ移動しますか？`)) {
+      return;
+    }
+
+    const logText = `ステータス変更: 📌 [${oldStatus}] → 📌 [${newStatus}]`;
     const updatedActivities = addActivityLog(task, this.currentUserName, logText);
-    const movedTask: Task = { ...task, status: newStatus, activities: updatedActivities, updatedAt: Date.now() };
+
+    // backlogCategory を削除（通常のカラムへ移動する場合）
+    const movedTask: Task = {
+      ...task,
+      status: newStatus,
+      backlogCategory: undefined,
+      activities: updatedActivities,
+      updatedAt: Date.now()
+    };
 
     try {
       await this.taskService.updateSingleTaskWithLock(
@@ -324,8 +362,6 @@ export class TasksComponent {
         movedTask,
         'update',
         this.currentUserName,
-        [],
-        `「${task.title}」が [${oldStatus}] → [${newStatus}] に移動しました`
       );
       this.cdr.detectChanges();
     } catch (err) {
@@ -349,9 +385,20 @@ export class TasksComponent {
     this.cdr.detectChanges();
   }
 
+  private isReservedColumnName(name: string): boolean {
+    const normalized = name.trim().toLowerCase();
+    return normalized === '未対応' || normalized === '検討中';
+  }
+
   async addColumn() {
     if (!this.newColumnName.trim() || !this.boardId) return;
     const trimmedName = this.newColumnName.trim();
+
+    if (this.isReservedColumnName(trimmedName)) {
+      alert('「未対応」および「検討中」はバックログ専用の予約名のため、リスト名に使用できません。');
+      return;
+    }
+
     if (this.columns.includes(trimmedName)) {
       alert('同じ名前のリストが既に存在します。');
       return;
@@ -396,6 +443,11 @@ export class TasksComponent {
       return;
     }
 
+    if (this.isReservedColumnName(newColumnName)) {
+      alert('「未対応」および「検討中」はバックログ専用の予約名のため、リスト名に使用できません。');
+      return;
+    }
+
     if (this.columns.includes(newColumnName)) {
       alert('同じ名前のリストが既に存在します。');
       return;
@@ -428,7 +480,7 @@ export class TasksComponent {
     event.preventDefault();
     if (this.draggedTask && this.draggedFromColumn) {
       if (this.draggedFromColumn !== toColumn) {
-        this.moveTask(this.draggedTask, toColumn);
+        this.moveTask(this.draggedTask, toColumn, true);
       }
     }
     this.draggedTask = null;
@@ -535,7 +587,7 @@ export class TasksComponent {
 
         if (logText.length === 0) return;
         const updatedActivities = addActivityLog(originalTask, this.currentUserName, logText);
-        
+
         const taskToSave: Task = {
           ...task,
           assignees: task.assignees || [],
@@ -583,7 +635,7 @@ export class TasksComponent {
       this.closeEditModal();
       this.cdr.detectChanges();
     }
-  } 
+  }
 
   // ハンドラーメソッド（テンプレートから呼び出し）
   onTaskCardStatusChange(event: { task: Task; newStatus: string }) {
@@ -613,14 +665,21 @@ export class TasksComponent {
     try {
       await this.taskService.updateSingleTaskWithLock(this.boardId, updatedTask);
       await this.sendTaskNotification(
-        updatedTask, 
-        'update', 
+        updatedTask,
+        'update',
         `タスクのタイトルが「${oldTitle}」から「${newTitle}」に変更されました`
       );
       this.cdr.detectChanges();
     } catch (err) {
       this.handleSingleTaskError(err);
     }
+  }
+
+  private getStatusName(task: Partial<Task>): string {
+    if (task.archived) return '📦 [アーカイブ]';
+    if (task.backlogCategory) return `📋 [バックログ: ${task.backlogCategory}]`;
+    if (task.status) return `📌 [${task.status}]`;
+    return '未設定';
   }
 
   async saveTaskUpdate(updatedTask: Task) {
@@ -651,11 +710,18 @@ export class TasksComponent {
       // 4. 排他ロック付きで Firestore に保存
       await this.taskService.updateSingleTaskWithLock(this.boardId, taskToSave);
 
+      let customMsg = `タスク「${taskToSave.title}」が更新されました`;
+      const oldStatus = formatTaskStatusName(originalTask);
+      const newStatus = formatTaskStatusName(taskToSave);
+      
+      if (oldStatus !== newStatus) {
+        customMsg = `「${taskToSave.title}」が ${oldStatus} → ${newStatus} に移動されました`;
+      }
+
       // 5. 通知の送信とローカル状態の即時更新
-      await this.sendTaskNotification(taskToSave, 'update', `タスク「${taskToSave.title}」が更新されました`);
+      await this.sendTaskNotification(taskToSave, 'update', customMsg);
       this.tasks = this.tasks.map(t => t.id === taskToSave.id ? taskToSave : t);
       this.cdr.detectChanges();
-
     } catch (err) {
       this.handleSingleTaskError(err);
     }
@@ -688,6 +754,7 @@ export class TasksComponent {
     if (this.showFilterPanel) {
       this.showSortPanel = false;
       this.tempStatusFilter = [...this.statusFilter];
+      this.tempCompPriorityFilter = [...this.compPriorityFilter];
       this.tempPriorityFilter = [...this.priorityFilter];
       this.tempAssigneeFilter = [...this.assigneeFilter];
       this.tempDueDateFilter = this.dueDateFilter;
@@ -735,6 +802,10 @@ export class TasksComponent {
     this.tempStatusFilter = toggleArrayValue(this.tempStatusFilter, value);
   }
 
+  toggleTempCompPriorityFilter(value: string): void {
+    this.tempCompPriorityFilter = toggleArrayValue(this.tempCompPriorityFilter, value);
+  }
+
   toggleTempPriorityFilter(value: string): void {
     this.tempPriorityFilter = toggleArrayValue(this.tempPriorityFilter, value);
   }
@@ -752,6 +823,7 @@ export class TasksComponent {
   // 適用ボタン
   applyFilters(): void {
     this.statusFilter = [...this.tempStatusFilter];
+    this.compPriorityFilter = [...this.tempCompPriorityFilter];
     this.priorityFilter = [...this.tempPriorityFilter];
     this.assigneeFilter = [...this.tempAssigneeFilter];
     this.dueDateFilter = this.tempDueDateFilter;
@@ -762,6 +834,7 @@ export class TasksComponent {
   // リセットボタン（パネル内）
   resetFilters(): void {
     this.tempStatusFilter = [];
+    this.tempCompPriorityFilter = [];
     this.tempPriorityFilter = [];
     this.tempAssigneeFilter = [];
     this.tempDueDateFilter = '';
@@ -772,6 +845,7 @@ export class TasksComponent {
   isFilterActive(): boolean {
     return this.searchQuery.trim() !== '' ||
       this.statusFilter.length > 0 ||
+      this.compPriorityFilter.length > 0 ||
       this.priorityFilter.length > 0 ||
       this.assigneeFilter.length > 0 ||
       this.dueDateFilter !== '';
@@ -780,6 +854,7 @@ export class TasksComponent {
   // フィルター条件があるか確認（検索は含めない）
   hasActiveFilters(): boolean {
     return this.statusFilter.length > 0 ||
+      this.compPriorityFilter.length > 0 ||
       this.priorityFilter.length > 0 ||
       this.assigneeFilter.length > 0 ||
       this.dueDateFilter !== '';

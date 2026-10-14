@@ -20,70 +20,64 @@ export function getDaysDifference(date1: Date, date2: Date): number {
  * 期限のステータスを計算
  */
 export interface DeadlineStatus {
-  days: number;
   label: string | null;
   color: string;
-  isOverdue: boolean;
-  isToday: boolean;
 }
 
-export function calculateDeadlineStatus(dueDate?: number): DeadlineStatus {
+export function calculateDeadlineStatus(dueDate?: number, hasTime?: boolean): DeadlineStatus {
   if (!dueDate) {
     return {
-      days: Infinity,
-      label: null,
-      color: '#f9f9f9',
-      isOverdue: false,
-      isToday: false
+      label: null, color: '#f9f9f9',
     };
   }
 
-  const deadline = new Date(dueDate);
+  const now = Date.now();
+
+  if (hasTime) {
+    if (now > dueDate) {
+      return { label: '【期限切れ】', color: '#fee2e2' };
+    }
+  } else {
+    // 時間指定がない場合は、その日の23:59:59を過ぎたら期限切れ
+    const deadlineDayEnd = new Date(dueDate);
+    deadlineDayEnd.setHours(23, 59, 59, 999);
+    if (now > deadlineDayEnd.getTime()) {
+      return { label: '【期限切れ】', color: '#fee2e2' };
+    }
+  }
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const deadlineDate = new Date(deadline);
+
+  const deadlineDate = new Date(dueDate);
   deadlineDate.setHours(0, 0, 0, 0);
 
-  const diffTime = deadlineDate.getTime() - today.getTime();
-  const diffDays = Math.ceil(diffTime / MS_PER_DAY);
+  const diffMs = deadlineDate.getTime() - today.getTime();
+  const calendarDaysDiff = Math.round(diffMs / (1000 * 60 * 60 * 24));
 
-  if (diffDays < 0) {
-    return {
-      days: diffDays,
-      label: '【期限切れ】',
-      color: '#fee2e2',
-      isOverdue: true,
-      isToday: false
-    };
+  if (hasTime && calendarDaysDiff === 0) {
+    const diffHours = Math.floor((dueDate - now) / (1000 * 60 * 60));
+    if (diffHours < 1) {
+      const diffMinutes = Math.floor((dueDate - now) / (1000 * 60));
+      return { label: `【あと${diffMinutes > 0 ? diffMinutes : 1}分】`, color: '#e2e8f0' };
+    }
+    return { label: `【あと${diffHours}時間】`, color: '#e2e8f0' };
   }
 
-  if (diffDays === 0) {
-    return {
-      days: 0,
-      label: '【今日まで】',
-      color: '#e2e8f0',
-      isOverdue: false,
-      isToday: true
-    };
+  if (calendarDaysDiff === 0) {
+    return { label: '【今日まで】', color: '#e2e8f0' };
+  }
+  if (calendarDaysDiff === 1) {
+    return { label: '【明日まで】', color: '#e2e8f0' };
+  }
+  if (calendarDaysDiff === 2) {
+    return { label: '【あと2日】', color: '#e2e8f0' };
+  }
+  if (calendarDaysDiff === 3) {
+    return { label: '【あと3日】', color: '#e2e8f0' };
   }
 
-  if (diffDays <= 3) {
-    return {
-      days: diffDays,
-      label: `【あと${diffDays}日】`,
-      color: '#e2e8f0',
-      isOverdue: false,
-      isToday: false
-    };
-  }
-
-  return {
-    days: diffDays,
-    label: null,
-    color: '#f9f9f9',
-    isOverdue: false,
-    isToday: false
-  };
+  return { label: null, color: '#f9f9f9' };
 }
 
 /**

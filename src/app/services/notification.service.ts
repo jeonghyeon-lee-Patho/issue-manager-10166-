@@ -16,7 +16,7 @@ export interface TaskNotification {
 })
 export class NotificationService {
   private firestore = inject(Firestore);
- 
+
   /**
    * タスク関連の通知を送信
    */
@@ -59,7 +59,7 @@ export class NotificationService {
       // ② 現在の担当者への通知（追加された人・継続の人）
       if (currentAssignees.length > 0) {
         const action = this.normalizeActionType(actionType);
-        const { title, defaultMsg } = this.getNotificationTitle(action, task.title);
+        const { title, defaultMsg } = this.getNotificationTitle(action, task);
 
         const finalMessage = `${customMessage || defaultMsg} (操作: ${currentUserName})`;
 
@@ -110,23 +110,32 @@ export class NotificationService {
    */
   private getNotificationTitle(
     action: 'create' | 'update' | 'delete',
-    taskTitle: string
+    task: Task
   ): { title: string; defaultMsg: string } {
+    let titleSuffix = '';
+
+    // タイトルにのみ状態（バックログ / アーカイブ）を付与
+    if (task.archived) {
+      titleSuffix = ' (アーカイブ)';
+    } else if (task.backlogCategory) {
+      titleSuffix = ' (バックログ)';
+    }
+
     switch (action) {
       case 'create':
         return {
-          title: '新規タスク割り当て',
-          defaultMsg: `新しいタスク「${taskTitle}」の担当に割り当てられました`
+          title: `新規タスク割り当て${titleSuffix}`,
+          defaultMsg: `新しいタスク「${task.title}」の担当に割り当てられました`
         };
       case 'delete':
         return {
-          title: 'タスク削除',
-          defaultMsg: `担当していたタスク「${taskTitle}」が削除されました`
+          title: `タスク削除${titleSuffix}`,
+          defaultMsg: `担当していたタスク「${task.title}」が削除されました`
         };
       default:
         return {
-          title: 'タスク更新',
-          defaultMsg: `タスク「${taskTitle}」が更新されました`
+          title: `タスク更新${titleSuffix}`,
+          defaultMsg: `タスク「${task.title}」が更新されました`
         };
     }
   }

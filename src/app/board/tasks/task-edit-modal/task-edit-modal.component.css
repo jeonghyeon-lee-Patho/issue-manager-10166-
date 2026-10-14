@@ -176,7 +176,6 @@ textarea.form-control {
   resize: vertical;
 }
 
-/* 優先度ボタン */
 .priority-buttons {
   display: flex;
   gap: 8px;

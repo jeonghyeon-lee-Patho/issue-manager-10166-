@@ -6,7 +6,7 @@ import { Task, TaskService } from '../task.service';
 import { WikiExportService } from '../../../services/wiki-export.service';
 import { MAX_TAGS, MAX_HOURS } from '../../../utils/constants.util';
 import { formatToDatetimeLocal } from '../../../utils/date.util';
-
+import { calculateComprehensivePriority } from '../task.service';
 
 @Component({
   selector: 'app-task-edit-modal',
@@ -35,15 +35,17 @@ export class TaskEditModalComponent implements OnChanges {
   editingCommentIndex: number | null = null;
   editingCommentText: string = '';
   isExportingWiki = false;
+  isBacklogTask: boolean = false;
 
   private auth = inject(Auth);
 
   constructor(private taskService: TaskService, private wikiExportService: WikiExportService, private cdr: ChangeDetectorRef) { }
 
   ngOnChanges(changes: SimpleChanges) {
-    // isOpen が false から true に変わったときにだけ初期化処理を実行
     const isOpenChange = changes['isOpen'];
     if (isOpenChange && !isOpenChange.previousValue && isOpenChange.currentValue === true) {
+      this.isBacklogTask = this.defaultColumn === '未対応' || this.defaultColumn === '検討中' || !!this.task?.backlogCategory;
+
       if (this.task) {
         // 編集モード
         this.editingTask = {
@@ -55,9 +57,11 @@ export class TaskEditModalComponent implements OnChanges {
         };
       } else {
         // 新規作成モード
+        this.isBacklogTask = this.defaultColumn === '未対応' || this.defaultColumn === '検討中';
         this.editingTask = {
-          status: this.defaultColumn || this.columns[0] || '',
-          priority: undefined,  // デフォルトなし
+          status: this.isBacklogTask ? '' : (this.defaultColumn || this.columns[0] || ''),
+          backlogCategory: this.isBacklogTask ? (this.defaultColumn as '未対応' | '検討中') : undefined,
+          importance: undefined,  // デフォルトなし
           subtasks: [],
           comments: [],
           assignees: this.currentUserName ? [this.currentUserName] : [],
@@ -218,7 +222,12 @@ export class TaskEditModalComponent implements OnChanges {
   saveEdit() {
     // タイトルのバリデーション
     if (!this.editingTask.title || !this.editingTask.title.trim()) {
-      this.titleError = '課題名は必須です';
+      this.titleError = 'タイトルは必須です';
+      return;
+    }
+
+    if (this.editingTask.startDate && this.editingTask.dueDate && this.editingTask.startDate > this.editingTask.dueDate) {
+      alert('⚠️ 開始日は期限以前の日付を指定してください。');
       return;
     }
 
@@ -226,18 +235,28 @@ export class TaskEditModalComponent implements OnChanges {
       .filter(st => st.title && st.title.trim() !== '')
       .map(st => ({ ...st, title: st.title.trim() }));
 
+    const isBacklog = this.isBacklogTask || !!this.editingTask.backlogCategory;
+    const backlogCat = isBacklog
+      ? (this.editingTask.backlogCategory || (this.defaultColumn as '未対応' | '検討中') || '未対応')
+      : undefined;
+
+    const calculatedPriority = calculateComprehensivePriority(
+      this.editingTask.dueDate,
+      this.editingTask.importance
+    );
+
     const taskToSave = {
       id: this.task?.id || Date.now().toString(),
       title: this.editingTask.title!.trim(),
-      status: this.editingTask.status || '',
-      priority: this.editingTask.priority,
+      status: isBacklog ? '' : (this.editingTask.status || this.columns[0] || ''),
+      backlogCategory: backlogCat,
+      importance: this.editingTask.importance,
+      priority: calculatedPriority,
       dueDate: this.editingTask.dueDate,
       hasTime: this.editingTask.hasTime || false,
-      // ==========================
       startDate: this.editingTask.startDate,
       estimatedHours: this.editingTask.estimatedHours,
       actualHours: this.editingTask.actualHours,
-      // ==========================
       description: this.editingTask.description || '',
       subtasks: validSubtasks,
       comments: this.editingTask.comments || [],
@@ -245,7 +264,11 @@ export class TaskEditModalComponent implements OnChanges {
       tags: this.editingTask.tags || [],
       activities: this.task?.activities || [],
       createdAt: this.task?.createdAt || Date.now(),
-      updatedAt: Date.now()
+      updatedAt: Date.now(),
+
+      archived: this.task?.archived || false,
+      archivedAt: this.task?.archivedAt,
+      archivedBy: this.task?.archivedBy
     } as Task;
 
     this.save.emit(taskToSave);
@@ -322,7 +345,9 @@ export class TaskEditModalComponent implements OnChanges {
     }
     const currentTimeStr = this.getTimeString(this.editingTask.dueDate);
     const timeStr = currentTimeStr ? `T${currentTimeStr}` : 'T00:00';
-    this.editingTask.dueDate = new Date(`${dateStr}${timeStr}`).getTime();
+    const newDueDate = new Date(`${dateStr}${timeStr}`).getTime();
+
+    this.editingTask.dueDate = newDueDate;
   }
 
   // 時間が変更された時
@@ -356,7 +381,6 @@ export class TaskEditModalComponent implements OnChanges {
     }
   }
 
-  // ===== ここから追加（開始日関連メソッド） =====
   // 開始日関連メソッド
   getStartDateString(startDate?: number): string {
     if (!startDate) return '';
@@ -365,12 +389,14 @@ export class TaskEditModalComponent implements OnChanges {
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
   }
 
+  // 開始日が変更された時
   onStartDateChange(dateStr: string): void {
     if (!dateStr) {
       this.editingTask.startDate = undefined;
       return;
     }
-    this.editingTask.startDate = new Date(`${dateStr}T00:00`).getTime();
+    const newStartDate = new Date(`${dateStr}T00:00`).getTime();
+    this.editingTask.startDate = newStartDate;
   }
 
   // 予定工数をクリア

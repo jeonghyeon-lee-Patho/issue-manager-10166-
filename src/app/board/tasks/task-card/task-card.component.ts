@@ -1,7 +1,7 @@
 import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Task, TaskService } from '../task.service';
+import { calculateComprehensivePriority, Task, TaskService } from '../task.service';
 import { calculateDeadlineStatus } from '../../../utils/date.util';
 
 @Component({
@@ -47,16 +47,26 @@ export class TaskCardComponent {
     this.dragEnd.emit();
   }
 
-  // デッドラインによる色わけ
   getTaskColor(task: Task): string {
-    const status = calculateDeadlineStatus(task.dueDate);
-    return status.color;
+    // 古いデータで priority (P0~P3) がない場合は都度計算する
+    const priority = task.priority || calculateComprehensivePriority(task.dueDate, task.importance);
+    
+    switch (priority) {
+      case 'P0': return '#fee2e2'; // 薄い赤（最優先）
+      case 'P1': return '#fef3c7'; // 薄いオレンジ/黄色（高）
+      case 'P2': return '#e0f2fe'; // 薄い青（中）
+      case 'P3': return '#f9fafb'; // ほぼ白/薄いグレー（低）
+      default: return '#f9f9f9';
+    }
+  }
+
+  getTaskPriority(task: Task): string {
+    return task.priority || calculateComprehensivePriority(task.dueDate, task.importance);
   }
  
-  // 追加：期限の状態テキストを取得（例: "【期限切れ】", "【今日まで】", "【あと2日】"）
-  getDueDateLabel(dueDateStr?: string | number | Date): string | null {
-    if (!dueDateStr) return null;
-    const status = calculateDeadlineStatus(typeof dueDateStr === 'number' ? dueDateStr : new Date(dueDateStr).getTime());
+  getDueDateLabel(task: Task): string | null {
+    if (!task.dueDate) return null;
+    const status = calculateDeadlineStatus(task.dueDate, task.hasTime);
     return status.label;
   }
 
@@ -117,16 +127,33 @@ export class TaskCardComponent {
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(assigneeName)}&background=random&color=fff&size=32`;
   }
 
-  // サブタスクの完了状態を更新
-  updateSubtask(subtask: any): void {
-    // イミュータブルな更新
-    const updatedSubtask = { ...subtask, completed: !subtask.completed };
-    const updatedSubtasks = this.task.subtasks?.map(st => st.id === subtask.id ? updatedSubtask : st) || [];
-    const updatedTask = { ...this.task, subtasks: updatedSubtasks };
+  hasTime(task: Task): boolean {
+    return !!task.hasTime && !!task.dueDate;
+  }
+
+  // バックログへ送る（backlogCategory を Backlog に設定）
+  moveToBacklog(): void {
+    if (!confirm(`タスク「${this.task.title}」をバックログに移動しますか？`)) return;
+    const updatedTask: Task = { 
+      ...this.task, 
+      status: '',
+      backlogCategory: '未対応' as const, 
+      updatedAt: Date.now() 
+    };
     this.updateTask.emit(updatedTask);
   }
 
-  hasTime(task: Task): boolean {
-    return !!task.hasTime && !!task.dueDate;
+  // アーカイブへ送る（archived フラグを true に変更）
+  archiveTask(): void {
+    if (!confirm(`タスク「${this.task.title}」をアーカイブに保管しますか？`)) return;
+    const updatedTask = {
+      ...this.task,
+      archived: true,
+      archivedAt: Date.now(),
+      archivedBy: this.currentUserName || 'User',
+      backlogCategory: undefined,  
+      updatedAt: Date.now()
+    };
+    this.updateTask.emit(updatedTask);
   }
 }

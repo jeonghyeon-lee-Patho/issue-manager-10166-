@@ -33,9 +33,36 @@
           <!---->
         </div>
 
-        <!-- 優先度フィルター -->
+        <!-- 優先度（総合優先度）フィルター -->
         <div class="filter-item">
           <label>優先度</label>
+          <div class="checkbox-group">
+            <label class="checkbox-label">
+              <input type="checkbox" [checked]="tempCompPriorityFilter.includes('P0')"
+                (change)="toggleTempCompPriorityFilter('P0')">
+              P0 (最優先)
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [checked]="tempCompPriorityFilter.includes('P1')"
+                (change)="toggleTempCompPriorityFilter('P1')">
+              P1 (高)
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [checked]="tempCompPriorityFilter.includes('P2')"
+                (change)="toggleTempCompPriorityFilter('P2')">
+              P2 (中)
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" [checked]="tempCompPriorityFilter.includes('P3')"
+                (change)="toggleTempCompPriorityFilter('P3')">
+              P3 (低)
+            </label>
+          </div>
+        </div>
+
+        <!-- 重要性フィルター -->
+        <div class="filter-item">
+          <label>重要性</label>
           <div class="checkbox-group">
             <label class="checkbox-label">
               <input type="checkbox" [checked]="tempPriorityFilter.includes('high')"
@@ -104,13 +131,16 @@
           <label>並び替え基準</label>
           <div class="sort-options">
             <button class="sort-option-btn" [class.active]="tempSortKey === 'title'" (click)="tempSortKey = 'title'">
-              課題名
+              タイトル
             </button>
-            <button class="sort-option-btn" [class.active]="tempSortKey === 'priority'" (click)="tempSortKey = 'priority'">
-              優先度
+            <button class="sort-option-btn" [class.active]="tempSortKey === 'importance'" (click)="tempSortKey = 'importance'">
+              重要性
             </button>
             <button class="sort-option-btn" [class.active]="tempSortKey === 'dueDate'" (click)="tempSortKey = 'dueDate'">
               期限
+            </button>
+            <button class="sort-option-btn" [class.active]="tempSortKey === 'priority'" (click)="tempSortKey = 'priority'">
+              優先度
             </button>
           </div>
         </div>

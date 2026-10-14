@@ -23,17 +23,7 @@ export const PRIORITY_RANK: Record<'high' | 'medium' | 'low', number> = {
 export const MAX_TAGS = 5;
 export const MAX_HOURS = 999;
 
-/**
- * 優先度ラベルを取得
- */
+
 export function getPriorityLabel(priority?: string): string {
   return PRIORITY_LABELS[priority as keyof typeof PRIORITY_LABELS] || (priority || '未設定');
-}
-
-/**
- * 優先度CSSクラスを取得
- */
-export function getPriorityClass(priority?: string): string {
-  if (!priority) return '';
-  return PRIORITY_CSS_CLASSES[priority as keyof typeof PRIORITY_CSS_CLASSES] || '';
 }

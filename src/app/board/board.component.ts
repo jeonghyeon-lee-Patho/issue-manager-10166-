@@ -12,6 +12,8 @@ import { Task } from './tasks/task.service';
 import { CalendarComponent } from './calendar/calendar.component';
 import { WikiComponent, WikiSection } from './wiki/wiki.component';
 import { MembersComponent } from './members/members.component';
+import { BacklogComponent } from './backlog/backlog.component';
+import { ArchiveComponent } from './archive/archive.component';
 import { Unsubscribe } from 'firebase/firestore';
 
 
@@ -28,7 +30,7 @@ export interface BoardNotification {
 @Component({
   selector: 'app-board',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, TasksComponent, CalendarComponent, WikiComponent, MembersComponent],
+  imports: [CommonModule, FormsModule, RouterLink, TasksComponent, CalendarComponent, WikiComponent, MembersComponent, BacklogComponent, ArchiveComponent],
   templateUrl: './board.component.html',
   styleUrls: ['./board.component.css']
 })
@@ -37,9 +39,11 @@ export class BoardComponent implements OnInit, OnDestroy {
   boardName: string = '';
   currentUserName: string = '';  // 現在のユーザー名
   selectedCategory: string = 'tasks';
-  categories = ['tasks', 'calendar', 'wiki', 'members'];
+  categories = ['tasks', 'backlog', 'archive', 'calendar', 'wiki', 'members'];
   categoryLabels: { [key: string]: string } = {
     tasks: 'Tasks',
+    backlog: 'Backlog',
+    archive: 'Archive',
     calendar: 'Calendar',
     wiki: 'Wiki',
     members: 'Members'
@@ -105,7 +109,7 @@ export class BoardComponent implements OnInit, OnDestroy {
             this.lastUpdatedAt = data['lastUpdatedAt'] || data['createdAt'] || 0;
 
             this.boardName = data['name'] || this.boardId;
-            this.columns = data['columns'] || ['To Do', 'In Progress', 'In Review', 'Done'];
+            this.columns = data['columns'] || ['TODO', '進行中', '確認中', '完了'];
             this.tasks = data['tasks'] || [];
             this.wikiSections = data['wikiSections'] || [];
 
@@ -140,7 +144,7 @@ export class BoardComponent implements OnInit, OnDestroy {
             this.subscribeNotifications();
           } else {
             this.boardName = '';
-            this.columns = ['To Do', 'In Progress', 'In Review', 'Done'];
+            this.columns = ['TODO', '進行中', '確認中', '完了'];
             this.tasks = [];
             this.wikiSections = [];
             this.currentUserName = 'User';
@@ -484,6 +488,12 @@ export class BoardComponent implements OnInit, OnDestroy {
             user: act.user === oldUserName ? newUserName : act.user
           }));
         }
+
+        // アーカイブのカード上に表示される archivedBy も更新
+        if (task.archivedBy === oldUserName) {
+          updatedTask.archivedBy = newUserName;
+        }
+
         return updatedTask;
       });
 

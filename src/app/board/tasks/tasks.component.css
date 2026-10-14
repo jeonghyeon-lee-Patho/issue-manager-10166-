@@ -156,6 +156,38 @@
   }
 }
 
+/* ================== フィルターパネルのスクロール対応 ================== */
+.filter-panel {
+  max-height: 480px; /* 必要に応じて 70vh など画面サイズに合わせて調整可 */
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* スクロールバーのデザインを綺麗に統一 */
+.filter-panel::-webkit-scrollbar {
+  width: 6px;
+}
+
+.filter-panel::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 3px;
+}
+
+.filter-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* スクロールしても「適用」「リセット」ボタンが常に下に表示される設定 */
+.filter-panel .filter-buttons {
+  position: sticky;
+  bottom: -16px; /* パネル下部の余白(padding: 16px)に合わせて固定 */
+  background-color: white;
+  padding: 10px 0 4px 0;
+  margin-top: 12px;
+  border-top: 1px solid #f1f5f9;
+  z-index: 2;
+}
+
 .filter-item {
   margin-bottom: 12px;
 }
@@ -242,7 +274,7 @@
 .filter-buttons {
   display: flex;
   gap: 8px;
-  margin-top: 16px;
+  margin-top: 12px;
 } 
 
 .btn-apply {
@@ -299,7 +331,13 @@
 
 
 /* ボタン群 */
-.sort-options,
+.sort-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 8px;
+}
+
 .sort-order-toggle {
   display: flex;
   gap: 8px;
@@ -310,7 +348,7 @@
 .order-btn {
   flex: 1;
   padding: 6px 8px;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 450;
   border: 1px solid #cbd5e1;
   border-radius: 4px;

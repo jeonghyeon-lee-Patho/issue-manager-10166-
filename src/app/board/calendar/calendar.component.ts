@@ -2,7 +2,7 @@
 import { Component, Input, OnInit, OnChanges, SimpleChanges, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Task, TaskService, addActivityLog, generateTaskDiffLog } from '../tasks/task.service';
+import { Task, TaskService, addActivityLog, generateTaskDiffLog, calculateComprehensivePriority } from '../tasks/task.service';
 import { TaskEditModalComponent } from '../tasks/task-edit-modal/task-edit-modal.component';
 import { NotificationService } from '../../services/notification.service';
 import { isHolidayOrWeekend } from '../../utils/date.util';
@@ -13,16 +13,6 @@ interface CalendarDay {
   tasks: Task[];
   isHoliday: boolean;
 }
-
-/*
-interface GanttDay {
-  date: Date;
-  dayNumber: number;
-  dayOfWeekStr: string;
-  isToday: boolean;
-  isHoliday: boolean;
-}
-*/
 
 @Component({
   selector: 'app-calendar',
@@ -146,7 +136,8 @@ export class CalendarComponent implements OnInit, OnChanges {
     const dateStr = this.formatDate(date);
 
     const matchedTasks = this.tasks.filter(t => {
-      if (!t.dueDate) return false;
+      // アーカイブ済み、またはバックログのタスクはカレンダーに表示しない
+      if (!t.dueDate || t.archived || t.backlogCategory) return false;
       const taskDate = new Date(t.dueDate);
       return this.formatDate(taskDate) === dateStr;
     });
@@ -155,7 +146,6 @@ export class CalendarComponent implements OnInit, OnChanges {
       const aHasTime = !!a.hasTime;
       const bHasTime = !!b.hasTime;
 
-      // 時間未設定 (--:--) のものは一番下へ
       if (!aHasTime && !bHasTime) return 0;
       if (!aHasTime) return 1;
       if (!bHasTime) return -1;
@@ -163,7 +153,7 @@ export class CalendarComponent implements OnInit, OnChanges {
       return (a.dueDate || 0) - (b.dueDate || 0);
     });
   }
-
+  
   // Dateオブジェクトを "YYYY-MM-DD" に変換
   formatDate(date: Date): string {
     const y = date.getFullYear();
@@ -180,26 +170,15 @@ export class CalendarComponent implements OnInit, OnChanges {
   }
 
   getTaskColor(task: Task): string {
-    if (!task.dueDate) {
-      return '#f9f9f9';
-    }
+    const priority = task.priority || calculateComprehensivePriority(task.dueDate, task.importance);
 
-    const deadline = new Date(task.dueDate);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const deadlineDate = new Date(deadline);
-    deadlineDate.setHours(0, 0, 0, 0);
-
-    const diffTime = deadlineDate.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    if (diffDays < 0) {
-      return '#fee2e2';
+    switch (priority) {
+      case 'P0': return '#fee2e2'; // 最優先（赤）
+      case 'P1': return '#fef3c7'; // 高（オレンジ・黄）
+      case 'P2': return '#e0f2fe'; // 中（青）
+      case 'P3': return '#f9fafb'; // 低（グレー）
+      default: return '#f9f9f9';   // デフォルト
     }
-    if (diffDays <= 3) {
-      return '#e2e8f0';
-    }
-    return '#f9f9f9';
   }
 
   // --- 2. 月切り替え（上段ナビゲーション） ---
@@ -302,11 +281,11 @@ export class CalendarComponent implements OnInit, OnChanges {
   }
 
   get unscheduledTasks(): Task[] {
-    return this.tasks.filter(t => !t.dueDate);
+    return this.tasks.filter(t => !t.dueDate && !t.archived && !t.backlogCategory);
   }
 
   getUnscheduledTasksByColumn(columnName: string): Task[] {
-    return this.tasks.filter(t => !t.dueDate && t.status === columnName);
+    return this.tasks.filter(t => !t.dueDate && !t.archived && !t.backlogCategory && t.status === columnName);
   }
 
   // サイドパネルからのドラッグ開始
@@ -346,12 +325,27 @@ export class CalendarComponent implements OnInit, OnChanges {
     const task = this.tasks.find(t => t.id === taskId);
     if (!task) return;
 
-    const updatedDueDate = new Date(targetDate).setHours(0, 0, 0, 0);
+    const targetDateTime = new Date(targetDate);
+    targetDateTime.setHours(0, 0, 0, 0);
 
+    if (task.startDate) {
+      const startDateTime = new Date(task.startDate);
+      startDateTime.setHours(0, 0, 0, 0);
+
+      if (targetDateTime.getTime() < startDateTime.getTime()) {
+        const startStr = this.formatDate(startDateTime);
+        alert(`⚠️ 期限は開始日（${startStr}）以降の日付を設定してください。`);
+        return;
+      }
+    }
+
+    const updatedDueDate = targetDateTime.getTime();
+    const newPriority = calculateComprehensivePriority(updatedDueDate, task.importance);
     const updatedTask: Task = {
       ...task,
       dueDate: updatedDueDate,
       hasTime: false,
+      priority: newPriority,
       updatedAt: Date.now()
     };
 
@@ -363,33 +357,6 @@ export class CalendarComponent implements OnInit, OnChanges {
     this.viewMode = mode;
     this.cdr.detectChanges();
   }
-
-  /*
-  get ganttDays(): GanttDay[] {
-    const year = this.currentDate.getFullYear();
-    const month = this.currentDate.getMonth();
-    const lastDayNum = new Date(year, month + 1, 0).getDate();
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const days: GanttDay[] = [];
-    for (let d = 1; d <= lastDayNum; d++) {
-      const date = new Date(year, month, d);
-      const checkDate = new Date(date);
-      checkDate.setHours(0, 0, 0, 0);
-
-      days.push({
-        date: date,
-        dayNumber: d,
-        dayOfWeekStr: this.weekDays[date.getDay()],
-        isToday: checkDate.getTime() === today.getTime(),
-        isHoliday: isHolidayOrWeekend(date)
-      });
-    }
-    return days;
-  }
-  */
 }
 
 

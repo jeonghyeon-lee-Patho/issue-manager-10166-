@@ -94,6 +94,16 @@
       [currentUserName]="currentUserName" [boardMembers]="boardMembers" [lastUpdatedAt]="lastUpdatedAt">
     </app-tasks>
 
+    <!-- Backlog ビュー -->
+    <app-backlog *ngIf="selectedCategory === 'backlog'" [boardId]="boardId" [columns]="columns" [tasks]="tasks"
+      [currentUserName]="currentUserName" [boardMembers]="boardMembers" [lastUpdatedAt]="lastUpdatedAt">
+    </app-backlog>
+
+    <!-- Archive ビュー -->
+    <app-archive *ngIf="selectedCategory === 'archive'" [boardId]="boardId" [columns]="columns" [tasks]="tasks"
+      [currentUserName]="currentUserName" [boardMembers]="boardMembers" [lastUpdatedAt]="lastUpdatedAt">
+    </app-archive>
+
     <!-- Calendar ビュー -->
     <app-calendar *ngIf="selectedCategory === 'calendar'" [boardId]="boardId" [tasks]="tasks" [columns]="columns"
       [boardMembers]="boardMembers" [currentUserName]="currentUserName" [lastUpdatedAt]="lastUpdatedAt">
