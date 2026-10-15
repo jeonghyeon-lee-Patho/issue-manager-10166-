@@ -59,7 +59,6 @@ export class HomeComponent implements OnInit {
         const ownedMap = new Map<string, any>();
         const joinedMap = new Map<string, any>();
 
-        // 【修正1】両方のボード情報をマージし、ユーザー個別の順序で並び替えて反映する関数
         const updateAllBoards = async () => {
           const mergedMap = new Map([...ownedMap, ...joinedMap]);
           let boards = Array.from(mergedMap.values());

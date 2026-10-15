@@ -59,6 +59,9 @@ export class LoginComponent implements OnInit {
         await sendEmailVerification(credential.user);
         alert('登録確認メールを送信しました。メール内のリンクをクリックして登録を完了させてください。\n\n※メールが届かない場合は、迷惑メール（スパム）フォルダもご確認ください。');
         await signOut(this.auth);
+
+        this.isSignUp = false;
+        return;
       } else {
         const credential = await signInWithEmailAndPassword(this.auth, this.email.trim(), this.password);
         // メール認証チェック

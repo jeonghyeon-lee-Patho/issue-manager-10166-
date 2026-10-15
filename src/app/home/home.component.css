@@ -67,14 +67,6 @@
   transform: scale(1.02);
 }
 
-/* ================== ボード一覧グリッド ================== */
-.board-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, 320px);
-  gap: 20px;
-  padding: 24px;
-}
-
 /* セクションスタイル */
 .pending-section, .owned-section {
   margin-bottom: 30px;
@@ -159,6 +151,14 @@
   font-size: 14px;
   text-align: center;
   padding: 40px 24px;
+}
+
+/* ================== ボード一覧グリッド ================== */
+.board-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 320px);
+  gap: 20px;
+  padding: 24px;
 }
 
 .board-card {

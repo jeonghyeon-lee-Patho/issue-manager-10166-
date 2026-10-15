@@ -17,7 +17,7 @@ export class MembersComponent implements OnInit {
   @Input() boardId: string = '';
   @Input() currentUserName: string = '';
   @Input() isAdmin: boolean = false;
- 
+
   members: BoardMember[] = [];
   currentUserUid: string | null = null;
   readonly defaultPhotoUrl = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%23e2e8f0'/><circle cx='50' cy='40' r='18' fill='%2394a3b8'/><path d='M 18,88 C 18,65 32,58 50,58 C 68,58 82,65 82,88 Z' fill='%2394a3b8'/></svg>`;
@@ -27,7 +27,7 @@ export class MembersComponent implements OnInit {
   inviteError = '';
   selectedProfileMember: BoardMember | null = null;
   isEditingProfile = false;
- 
+
   // 編集用状態変数
   editingUid: string | null = null;
   editingPosition: string = '';         // 1. 役職 (例: フロントエンド / リーダー)
@@ -226,10 +226,9 @@ export class MembersComponent implements OnInit {
     }
   }
 
-  //--------------------------------------------------------
   openProfileModal(member: BoardMember): void {
-    this.selectedProfileMember = {...member};
-    this.isEditingProfile = false; 
+    this.selectedProfileMember = { ...member };
+    this.isEditingProfile = false;
     this.cdr.detectChanges();
   }
 
@@ -253,7 +252,7 @@ export class MembersComponent implements OnInit {
 
   async saveMemberProfileFromModal(): Promise<void> {
     if (!this.selectedProfileMember || this.selectedProfileMember.uid !== this.currentUserUid || !this.boardId) return;
-    
+
     const updatedMember: BoardMember = {
       ...this.selectedProfileMember,
       position: this.editingPosition ? this.editingPosition.trim() : '',
@@ -261,7 +260,7 @@ export class MembersComponent implements OnInit {
       statusMessage: this.editingStatusMessage ? this.editingStatusMessage.trim() : '',
       contactId: this.editingContactId ? this.editingContactId.trim() : ''
     };
-    
+
     const index = this.members.findIndex(m => m.uid === updatedMember.uid);
     if (index !== -1) {
       this.members[index] = updatedMember;
@@ -277,7 +276,6 @@ export class MembersComponent implements OnInit {
       alert('プロフィールの更新に失敗しました: ' + (error.message || ''));
     }
   }
-  //--------------------------------------------------------
 
   openInviteModal() {
     this.showInviteModal = true;
@@ -306,10 +304,14 @@ export class MembersComponent implements OnInit {
       const boardSnap = await getDoc(boardRef);
       const boardName = boardSnap.exists() ? boardSnap.data()['name'] : 'Unknown Board';
 
+      const myProfile = this.members.find(m => m.uid === this.currentUserUid);
+      const inviterName = myProfile?.displayName || this.currentUserName || 'メンバー';
+
       await this.boardService.inviteMemberToBoard(
         this.boardId,
         this.inviteEmail.trim(),
-        boardName
+        boardName,
+        inviterName
       );
 
       // フォームをすぐにリセット
@@ -318,7 +320,6 @@ export class MembersComponent implements OnInit {
       this.showInviteModal = false;
       this.cdr.detectChanges();
 
-      // 成功メッセージ（フォームは既に閉じている）
       alert('招待を送信しました！');
     } catch (error: any) {
       this.inviteError = error.message || '招待送信に失敗しました';

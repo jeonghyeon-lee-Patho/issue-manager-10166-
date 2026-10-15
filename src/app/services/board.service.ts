@@ -136,7 +136,7 @@ export class BoardService {
   /**
    * ボードにメンバーを招待
    */
-  async inviteMemberToBoard(boardId: string, email: string, boardName: string): Promise<void> {
+  async inviteMemberToBoard(boardId: string, email: string, boardName: string, inviterName: string): Promise<void> {
     const currentUser = this.auth.currentUser;
     if (!currentUser) throw new Error('User not authenticated');
 
@@ -174,7 +174,7 @@ export class BoardService {
       boardId,
       boardName,
       email,
-      invitedBy: currentUser.uid,
+      invitedBy: inviterName,
       invitedAt: Date.now(),
       status: 'pending'
     });
