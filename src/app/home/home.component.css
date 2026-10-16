@@ -69,7 +69,7 @@
 
 /* セクションスタイル */
 .pending-section, .owned-section {
-  margin-bottom: 30px;
+  margin-bottom: 30px; 
 }
 
 .section-title {
@@ -87,7 +87,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 16px;
-  padding: 0 24px 20px 24px;
+  padding: 12px 24px 20px 24px;
 }
 
 .pending-board-card {
@@ -146,19 +146,12 @@
   transform: scale(1.02);
 }
 
-.empty-state {
-  color: #7f8c8d;
-  font-size: 14px;
-  text-align: center;
-  padding: 40px 24px;
-}
-
 /* ================== ボード一覧グリッド ================== */
 .board-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, 320px);
   gap: 20px;
-  padding: 24px;
+  padding: 12px 24px;
 }
 
 .board-card {
@@ -222,6 +215,16 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.url-param {
+  display: inline-block;
+  background-color: #ecf0f1;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #34495e;
+  font-family: 'Courier New', monospace;
 }
 
 .board-card-right {
@@ -319,16 +322,6 @@
   border-radius: 3px;
 }
 
-.url-param {
-  display: inline-block;
-  background-color: #ecf0f1;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  color: #34495e;
-  font-family: 'Courier New', monospace;
-}
-
 .btn-delete-board {
   background: none;
   border: none;
@@ -362,6 +355,13 @@
 
 .btn-delete-board:hover svg {
   color: #c0392b;
+}
+
+.empty-state {
+  color: #7f8c8d;
+  font-size: 14px;
+  text-align: center;
+  padding: 40px 24px;
 }
 
 /* モーダル基本スタイル */

@@ -10,12 +10,12 @@ export interface BoardMember {
   email: string;
   displayName: string;
   joinedAt: number;
-  position?: string;
+  role?: 'admin' | 'member';
+  position?: string;        // 役職 
   domain?: string;          // 担当領域
   statusMessage?: string;   // 一言ステータス (例: 今週リリース前で多忙)
   contactId?: string;       // Slack/連絡先ID (例: @tanaka_dev)
   photoURL?: string;        // プロフィール画像URL
-  role?: 'admin' | 'member';
 }
 
 export interface BoardInvitation {
@@ -153,8 +153,6 @@ export class BoardService {
     if (boardSnap.exists()) {
       const boardData = boardSnap.data();
       const members = (boardData['members'] || []) as any[];
-
-      // メンバーのメールアドレスをチェック
       if (members.some(m => m.email === email)) {
         throw new Error('既に招待されているか、メンバーに登録されています。');
       } 

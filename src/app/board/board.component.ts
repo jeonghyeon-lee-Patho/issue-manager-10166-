@@ -343,8 +343,13 @@ export class BoardComponent implements OnInit, OnDestroy {
     this.cdr.detectChanges();
   }
 
-  cancelEditBoardName() {
+  cancelEditBoardName(event?: Event) {
+    if (event) {
+      event.stopPropagation();
+    }
+    this.editingBoardName = this.boardName;
     this.isEditingBoardName = false;
+    this.cdr.detectChanges();
   }
 
   // ユーザー名編集
@@ -532,7 +537,12 @@ export class BoardComponent implements OnInit, OnDestroy {
     }
   }
 
-  cancelEditUserName() {
+  cancelEditUserName(event?: Event) {
+    if (event) {
+      event.stopPropagation();
+    }
+    this.editingUserName = this.currentUserName;
     this.isEditingUserName = false;
+    this.cdr.detectChanges();
   }
 }

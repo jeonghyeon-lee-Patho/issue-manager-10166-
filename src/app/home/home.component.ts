@@ -114,13 +114,15 @@ export class HomeComponent implements OnInit {
 
         // 招待待ちボードを取得
         if (user.email) {
-          const unsubscribeInvitations = this.boardService.getMyInvitations(user.email).subscribe(
-            invitations => {
+          const unsubscribeInvitations = this.boardService.getMyInvitations(user.email).subscribe({
+            next: (invitations) => {
               this.pendingBoards = invitations;
               this.cdr.detectChanges();
             },
-            error => console.error("招待取得エラー:", error)
-          );
+            error: (error) => {
+              console.error("招待取得エラー:", error);
+            }
+          });
 
           this.destroyRef.onDestroy(() => unsubscribeInvitations.unsubscribe?.());
         }
@@ -196,7 +198,6 @@ export class HomeComponent implements OnInit {
       members: [
         {
           uid: this.currentUser.uid,
-          //displayName: this.currentUser.displayName || 'User',
           displayName: displayName,
           email: this.currentUser.email || '',
           photoURL: this.currentUser.photoURL || '',
@@ -344,6 +345,7 @@ export class HomeComponent implements OnInit {
     if (draggedIndex !== -1 && targetIndex !== -1) {
       // 1. ローカル配列で要素の位置を入れ替え
       const [movedBoard] = this.allBoards.splice(draggedIndex, 1);
+      //const movedBoard = this.allBoards.splice(draggedIndex, 1)[0];
       this.allBoards.splice(targetIndex, 0, movedBoard);
 
       this.cdr.detectChanges();
@@ -408,8 +410,18 @@ export class HomeComponent implements OnInit {
     }
   }
 
-  cancelEditBoardName() {
+  cancelEditBoardName(event?: KeyboardEvent, board?: any) {
+    if (event) {
+      event.stopPropagation();
+    }
+    if (board) {
+      this.editingBoardNameValue = board.name;
+    } else {
+      this.editingBoardNameValue = '';
+    }
+
     this.editingBoardId = null;
+    this.cdr.detectChanges();
   }
 
   trackByBoardId(index: number, board: any): string {
