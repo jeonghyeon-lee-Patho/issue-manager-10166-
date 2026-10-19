@@ -264,9 +264,11 @@
   color: #7f8c8d;
 }
 
+/*
 .editable-board-title {
   cursor: text;
 }
+  */
 
 .board-title {
   margin: 0 0 12px 0;
@@ -278,7 +280,11 @@
   transition: all 0.2s ease;
 }
 
-.board-title:hover {
+.board-title.can-edit {
+  cursor: text;
+} 
+
+.board-title.can-edit:hover {
   background-color: rgba(52, 152, 219, 0.1);
 }
 

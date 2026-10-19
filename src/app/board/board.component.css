@@ -48,7 +48,6 @@
   font-size: 18px;
   font-weight: 600;
   margin: 0;
-  cursor: pointer;
   padding: 4px 8px;
   border-radius: 4px;
   transition: all 0.2s ease;
@@ -63,7 +62,11 @@
   overflow-wrap: anywhere;
 }
 
-.board-name:hover {
+.board-name.can-edit {
+  cursor: pointer;
+}
+
+.board-name.can-edit:hover {
   background-color: rgba(255, 255, 255, 0.1);
 }
 
@@ -177,6 +180,16 @@
   gap: 8px;
 }
 
+.btn-text-small {
+  background: none;
+  border: none;
+  color: #3498db;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.btn-text-small:hover { text-decoration: underline; }
+
 .btn-danger-text {
   color: #ef4444;
   background: none;
@@ -211,16 +224,6 @@
   opacity: 1;
   background-color: #fee2e2;
 }
-
-.btn-text-small {
-  background: none;
-  border: none;
-  color: #3498db;
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.btn-text-small:hover { text-decoration: underline; }
 
 .notification-list { overflow-y: auto; max-height: 340px; }
 

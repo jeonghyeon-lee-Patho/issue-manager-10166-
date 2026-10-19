@@ -39,7 +39,7 @@
               <div class="editable-board-title">
                 <h3 *ngIf="!editingBoardId || editingBoardId !== board.id" class="board-title"
                   [class.can-edit]="isBoardAdmin(board)" [title]="isBoardAdmin(board) ? 'クリックしてボード名を編集' : ''"
-                  (click)="startEditBoardName(board); $event.stopPropagation()">
+                  (click)="startEditBoardName($event, board)" >
                   {{ board.name }}
                 </h3>
                 <div *ngIf="editingBoardId === board.id" (click)="$event.stopPropagation()">

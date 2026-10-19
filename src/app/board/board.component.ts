@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, DestroyRef, ChangeDetectorRef, NgZone, OnDestroy } from '@angular/core';
+import { Component, OnInit, inject, DestroyRef, ChangeDetectorRef, NgZone, OnDestroy, ViewChild, ElementRef } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -14,7 +14,7 @@ import { WikiComponent, WikiSection } from './wiki/wiki.component';
 import { MembersComponent } from './members/members.component';
 import { BacklogComponent } from './backlog/backlog.component';
 import { ArchiveComponent } from './archive/archive.component';
-import { Unsubscribe } from 'firebase/firestore';
+import { getDocs, Unsubscribe, writeBatch } from 'firebase/firestore';
 
 
 export interface BoardNotification {
@@ -35,6 +35,8 @@ export interface BoardNotification {
   styleUrls: ['./board.component.css']
 })
 export class BoardComponent implements OnInit, OnDestroy {
+  @ViewChild('boardInput') boardInput?: ElementRef<HTMLInputElement>;
+
   boardId: string = '';
   boardName: string = '';
   currentUserName: string = '';  // 現在のユーザー名
@@ -49,14 +51,15 @@ export class BoardComponent implements OnInit, OnDestroy {
     members: 'Members'
   };
 
-
   // 編集モード
   isEditingBoardName = false;
   editingBoardName = '';
   isEditingUserName = false;
   editingUserName = '';
   currentUserPhotoUrl: string = '';
-  readonly defaultPhotoUrl = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%23e2e8f0'/><circle cx='50' cy='40' r='18' fill='%2394a3b8'/><path d='M 18,88 C 18,65 32,58 50,58 C 68,58 82,65 82,88 Z' fill='%2394a3b8'/></svg>`;
+  readonly defaultPhotoUrl = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>
+    <circle cx='50' cy='50' r='50' fill='%23e2e8f0'/><circle cx='50' cy='40' r='18' fill='%2394a3b8'/>
+    <path d='M 18,88 C 18,65 32,58 50,58 C 68,58 82,65 82,88 Z' fill='%2394a3b8'/></svg>`;
 
   // データ
   columns: string[] = [];
@@ -97,24 +100,21 @@ export class BoardComponent implements OnInit, OnDestroy {
         this.ngZone.run(() => {
           if (docSnap.exists()) {
             const data = docSnap.data();
-            
+
             const currentUserUid = this.auth.currentUser?.uid;
             if (currentUserUid && !data['memberUids']?.includes(currentUserUid)) {
               alert('このボードから削除されています。');
               this.router.navigate(['/']);
               return;
             }
-            
-            // ★ Firestoreの最新タイムスタンプを保持
-            this.lastUpdatedAt = data['lastUpdatedAt'] || data['createdAt'] || 0;
 
+            this.lastUpdatedAt = data['lastUpdatedAt'] || data['createdAt'] || 0;
             this.boardName = data['name'] || this.boardId;
             this.columns = data['columns'] || ['TODO', '進行中', '確認中', '完了'];
             this.tasks = data['tasks'] || [];
             this.wikiSections = data['wikiSections'] || [];
 
             // ボード内のユーザー名を取得
-            // 優先順：userName > 現在のユーザーのメンバー情報のdisplayName > 'User'
             let userName = data['userName'] || 'User';
             let userPhoto = ''; // 初期化
             let userRole = 'member';
@@ -194,27 +194,27 @@ export class BoardComponent implements OnInit, OnDestroy {
     if (this.notifications.length === 0) return;
     if (!confirm('表示中のお知らせをすべて削除してもよろしいですか？') || !this.boardId) return;
 
-    const targets = [...this.notifications];
-
-    // 1. UI側を即時クリア
-
-    const unreadInTargets = targets.filter(n => !n.read).length;
-    this.unreadCount = Math.max(0, this.unreadCount - unreadInTargets);
-
     this.notifications = [];
+    this.unreadCount = 0;
     this.cdr.markForCheck();
     this.cdr.detectChanges();
 
-    // 2. 裏でFirestoreから一括削除
     try {
-      const deletePromises = targets
-        .filter(n => n.id)
-        .map(n => {
-          const noticeRef = doc(this.firestore, `boards/${this.boardId}/notifications/${n.id}`);
-          return deleteDoc(noticeRef);
-        });
+      const noticesRef = collection(this.firestore, `boards/${this.boardId}/notifications`);
+      const allQuery = query(
+        noticesRef,
+        where('targetUser', 'in', [this.currentUserName, 'ALL'])
+      );
 
-      await Promise.all(deletePromises);
+      const snapshot = await getDocs(allQuery);
+      if (snapshot.empty) return;
+
+      const batch = writeBatch(this.firestore);
+      snapshot.docs.forEach(docSnap => {
+        batch.delete(docSnap.ref);
+      });
+
+      await batch.commit();
     } catch (err) {
       console.error('All Notifications Delete Error:', err);
     }
@@ -294,20 +294,29 @@ export class BoardComponent implements OnInit, OnDestroy {
   async markAllAsRead() {
     if (this.unreadCount === 0) return;
 
-    // 1. UI側を即時更新（未読数を0に）
     this.notifications.forEach(n => n.read = true);
     this.unreadCount = 0;
     this.cdr.markForCheck();
-    this.cdr.detectChanges(); // 即座に画面を再描画
+    this.cdr.detectChanges();
 
-    // 2. 裏でFirestoreを一括更新
     try {
-      const unreadList = this.notifications.filter(n => n.id);
-      const promises = unreadList.map(notice => {
-        const noticeRef = doc(this.firestore, `boards/${this.boardId}/notifications/${notice.id}`);
-        return updateDoc(noticeRef, { read: true });
+      const noticesRef = collection(this.firestore, `boards/${this.boardId}/notifications`);
+
+      const unreadQuery = query(
+        noticesRef,
+        where('targetUser', 'in', [this.currentUserName, 'ALL']),
+        where('read', '==', false)
+      );
+
+      const snapshot = await getDocs(unreadQuery);
+      if (snapshot.empty) return;
+
+      const batch = writeBatch(this.firestore);
+      snapshot.docs.forEach(docSnap => {
+        batch.update(docSnap.ref, { read: true });
       });
-      await Promise.all(promises);
+
+      await batch.commit();
     } catch (err) {
       console.error('Mark all as read error:', err);
     }
@@ -318,29 +327,46 @@ export class BoardComponent implements OnInit, OnDestroy {
     this.router.navigate(['/board', this.boardId, category]);
   }
 
-  get currentUrl(): string {
-    return window.location.href;
-  }
-
   // ボード名編集
   startEditBoardName() {
     if (!this.isAdmin) return;
     this.isEditingBoardName = true;
     this.editingBoardName = this.boardName;
+    this.cdr.detectChanges();
+
+    setTimeout(() => {
+      if (this.boardInput) {
+        this.boardInput.nativeElement.focus();
+      }
+    }, 0);
   }
 
   async saveBoardName() {
     if (!this.isAdmin) return;
-    if (!this.editingBoardName.trim() || this.editingBoardName === this.boardName) {
+
+    const newName = this.editingBoardName.trim();
+    const previousName = this.boardName;
+    if (!newName || newName === previousName) {
       this.isEditingBoardName = false;
       return;
     }
 
-    const boardRef = doc(this.firestore, `boards/${this.boardId}`);
-    await setDoc(boardRef, { name: this.editingBoardName.trim() }, { merge: true });
-    this.boardName = this.editingBoardName.trim();
+    this.boardName = newName;
     this.isEditingBoardName = false;
     this.cdr.detectChanges();
+
+    try {
+      const boardRef = doc(this.firestore, `boards/${this.boardId}`);
+      await setDoc(boardRef, {
+        name: newName,
+        lastUpdatedAt: Date.now()
+      }, { merge: true });
+    } catch (err: any) {
+      console.error('ボード名の更新エラー:', err);
+      alert('ボード名の保存に失敗しました');
+      this.boardName = previousName;
+      this.cdr.detectChanges();
+    }
   }
 
   cancelEditBoardName(event?: Event) {
@@ -356,9 +382,15 @@ export class BoardComponent implements OnInit, OnDestroy {
   startEditUserName() {
     this.isEditingUserName = true;
     this.editingUserName = this.currentUserName;
+    this.cdr.detectChanges();
+
+    setTimeout(() => {
+      if (this.boardInput) {
+        this.boardInput.nativeElement.focus();
+      }
+    }, 0);
   }
 
-  // 【追加】ファイルが選択された時の処理
   async onFileSelected(event: any) {
     const file = event.target.files[0];
     if (!file) return;
@@ -485,7 +517,7 @@ export class BoardComponent implements OnInit, OnDestroy {
           updatedTask.assignees = task.assignees.map(assignee =>
             assignee === oldUserName ? newUserName : assignee
           );
-        } 
+        }
 
         if (task.activities && task.activities.length > 0) {
           updatedTask.activities = task.activities.map(act => ({

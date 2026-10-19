@@ -48,9 +48,6 @@ export class BoardService {
   private auth = inject(Auth);
   private ngZone = inject(NgZone);
 
-  /**
-   * ユーザーのボード順序を取得（ユーザー固有の順序）
-   */
   async getUserBoardOrder(userId: string): Promise<string[]> {
     const orderRef = doc(this.firestore, `users/${userId}/boardOrder/order`);
     const { getDoc } = await import('@angular/fire/firestore');
@@ -62,9 +59,6 @@ export class BoardService {
     return [];
   }
 
-  /**
-   * ボード順序を保存（ユーザー個別）
-   */
   async saveBoardOrder(userId: string, boardIds: string[]): Promise<void> {
     const orderRef = doc(this.firestore, `users/${userId}/boardOrder/order`);
     await setDoc(orderRef, {
@@ -87,9 +81,7 @@ export class BoardService {
     const cleanedMembers = updatedMembers.map(m => cleanUndefinedFields(m) as BoardMember);
     await updateDoc(boardRef, { members: cleanedMembers });
   }
-  /**
-   * メンバーの並び替え順序を保存
-   */
+
   async updateMembersOrder(boardId: string, updatedMembers: BoardMember[]): Promise<void> {
     const boardRef = doc(this.firestore, `boards/${boardId}`);
     await updateDoc(boardRef, {
@@ -97,9 +89,6 @@ export class BoardService {
     });
   }
 
-  /**
-   * メンバーの役割（admin / member）を更新する
-   */
   async updateMemberRole(boardId: string, targetUid: string, newRole: 'admin' | 'member'): Promise<void> {
     const boardRef = doc(this.firestore, `boards/${boardId}`);
     const { getDoc } = await import('@angular/fire/firestore');
@@ -113,9 +102,6 @@ export class BoardService {
     await updateDoc(boardRef, { members: updatedMembers });
   }
 
-  /**
-   * 権限を完全に譲る（対象者をadminにし、自分をmemberにする）
-   */
   async transferAdminRole(boardId: string, currentAdminUid: string, targetUid: string): Promise<void> {
     const boardRef = doc(this.firestore, `boards/${boardId}`);
     const { getDoc } = await import('@angular/fire/firestore');
@@ -133,9 +119,6 @@ export class BoardService {
     await updateDoc(boardRef, { members: updatedMembers });
   }
 
-  /**
-   * ボードにメンバーを招待
-   */
   async inviteMemberToBoard(boardId: string, email: string, boardName: string, inviterName: string): Promise<void> {
     const currentUser = this.auth.currentUser;
     if (!currentUser) throw new Error('User not authenticated');
@@ -178,9 +161,6 @@ export class BoardService {
     });
   }
 
-  /**
-   * ユーザーが受け取った招待一覧を取得（pending）
-   */
   getMyInvitations(email: string): Observable<BoardInvitation[]> {
     const invitationsRef = collection(this.firestore, 'invitations');
     const q = query(invitationsRef, where('email', '==', email), where('status', '==', 'pending'));
@@ -198,9 +178,6 @@ export class BoardService {
     });
   }
 
-  /**
-   * 招待を受け入れてボードにメンバーとして追加
-   */
   async acceptInvitation(invitationId: string, displayName: string): Promise<void> {
     const currentUser = this.auth.currentUser;
     if (!currentUser) throw new Error('ユーザーが認証されていません');
@@ -256,9 +233,6 @@ export class BoardService {
     });
   }
 
-  /**
-   * 招待を却下
-   */
   async rejectInvitation(invitationId: string): Promise<void> {
     const invitationRef = doc(this.firestore, `invitations/${invitationId}`);
     await updateDoc(invitationRef, {
@@ -266,9 +240,6 @@ export class BoardService {
     });
   }
 
-  /**
-   * ボードのメンバー一覧を取得
-   */
   getBoardMembers(boardId: string): Observable<BoardMember[]> {
     const boardRef = doc(this.firestore, `boards/${boardId}`);
 
@@ -289,9 +260,6 @@ export class BoardService {
     });
   }
 
-  /**
-   * 自分が参加しているボード一覧を取得
-   */
   getMyJoinedBoards(userUid: string): Observable<any[]> {
     const boardsRef = collection(this.firestore, 'boards');
     const q = query(boardsRef, where('members', 'array-contains', { uid: userUid }));
@@ -309,9 +277,6 @@ export class BoardService {
     });
   }
 
-  /**
-   * ボードからメンバーを削除
-   */
   async removeMemberFromBoard(boardId: string, member: BoardMember): Promise<void> {
     const boardRef = doc(this.firestore, `boards/${boardId}`);
     await updateDoc(boardRef, {
@@ -320,9 +285,6 @@ export class BoardService {
     });
   }
 
-  /**
-   * ボード内のすべてのタスクから特定のユーザーを担当者から削除
-   */
   async removeUserFromTaskAssignees(boardId: string, userDisplayName: string): Promise<void> {
     const boardRef = doc(this.firestore, `boards/${boardId}`);
     const { getDoc } = await import('@angular/fire/firestore');
@@ -345,12 +307,5 @@ export class BoardService {
 
     // 更新をFirestoreに保存
     await updateDoc(boardRef, { tasks: updatedTasks });
-  }
-
-  /**
-   * 現在のユーザーを確認
-   */
-  getCurrentUserEmail(): string | null {
-    return this.auth.currentUser?.email || null;
   }
 }

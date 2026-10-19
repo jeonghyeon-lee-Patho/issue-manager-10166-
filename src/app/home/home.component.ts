@@ -2,7 +2,7 @@ import { Component, OnInit, ChangeDetectorRef, DestroyRef, inject } from '@angul
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Auth, authState, User, signOut, updateProfile, user } from '@angular/fire/auth';
+import { Auth, authState, User, signOut, updateProfile } from '@angular/fire/auth';
 import { Firestore, collection, query, where, doc, setDoc, onSnapshot, updateDoc, deleteDoc, getDoc } from '@angular/fire/firestore';
 import { BoardService, BoardInvitation } from '../services/board.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -18,21 +18,19 @@ export class HomeComponent implements OnInit {
   currentUser: User | null = null;
   allBoards: any[] = [];
   pendingBoards: BoardInvitation[] = [];
- 
+  ////
+  userBoardOrder: string[] = [];
+  ////
   showModal = false;
   modalStep: 1 | 2 = 1;
-
   newBoardName = '';
   newBoardId = '';
   userName = '';
-
   columns: string[] = ['TODO', '進行中', '確認中', '完了'];
   newColumnInput = '';
   showAddColumnInput = false;
 
   draggedBoard: any = null;
-
-  // ボード名編集
   editingBoardId: string | null = null;
   editingBoardNameValue: string = '';
 
@@ -52,6 +50,13 @@ export class HomeComponent implements OnInit {
       } else {
         this.currentUser = user;
 
+        try {
+          this.userBoardOrder = await this.boardService.getUserBoardOrder(user.uid);
+        } catch (error) {
+          console.log('ボード順序の取得に失敗（初回の可能性あり）:', error);
+          this.userBoardOrder = [];
+        }
+      
         const boardsRef = collection(this.firestore, 'boards');
         const ownedQuery = query(boardsRef, where('ownerId', '==', user.uid));
         const joinedQuery = query(boardsRef, where('memberUids', 'array-contains', user.uid));
@@ -59,31 +64,23 @@ export class HomeComponent implements OnInit {
         const ownedMap = new Map<string, any>();
         const joinedMap = new Map<string, any>();
 
-        const updateAllBoards = async () => {
+        const updateAllBoards = () => {
           const mergedMap = new Map([...ownedMap, ...joinedMap]);
           let boards = Array.from(mergedMap.values());
 
-          // ユーザー個別の順序を取得
-          let userBoardOrder: string[] = [];
-          try {
-            userBoardOrder = await this.boardService.getUserBoardOrder(user.uid);
-          } catch (error) {
-            console.log('ボード順序の取得に失敗（初回の可能性あり）:', error);
-          }
-
           // ユーザー順序に基づいてソート
-          if (userBoardOrder.length > 0) {
-            boards.sort((a, b) => {
-              const indexA = userBoardOrder.indexOf(a.id);
-              const indexB = userBoardOrder.indexOf(b.id);
+          boards.sort((a, b) => {
+            const indexA = this.userBoardOrder.indexOf(a.id);
+            const indexB = this.userBoardOrder.indexOf(b.id);
 
-              // リストにあるものを先に、ない場合は末尾に追加
-              if (indexA === -1 && indexB === -1) return 0;
-              if (indexA === -1) return 1;
-              if (indexB === -1) return -1;
+            if (indexA !== -1 && indexB !== -1) {
               return indexA - indexB;
-            });
-          }
+            }
+            if (indexA !== -1) return -1;
+            if (indexB !== -1) return 1;
+
+            return (b.createdAt || 0) - (a.createdAt || 0);
+          });
 
           this.allBoards = boards;
           this.cdr.detectChanges();
@@ -131,12 +128,37 @@ export class HomeComponent implements OnInit {
     });
   }
 
-  nextStep() {
+  async nextStep() {
     if (!this.newBoardName.trim()) {
       alert('ボード名を入力してください。');
       return;
     }
+    ////
+    const customId = this.newBoardId.trim();
+    if (customId) {
+      const validIdRegex = /^[a-zA-Z0-9-_]+$/;
+      if (!validIdRegex.test(customId)) {
+        alert('URLパラメータには半角英数字、ハイフン(-)、アンダースコア(_)のみ使用できます。');
+        return;
+      }
+
+      try {
+        const boardRef = doc(this.firestore, `boards/${customId}`);
+        const boardSnap = await getDoc(boardRef);
+
+        if (boardSnap.exists()) {
+          alert('このURLパラメータは既に使用されています。別の値を指定してください。');
+          return;
+        }
+      } catch (error) {
+        console.error('URLパラメータの確認中にエラーが発生しました:', error);
+        alert('確認中にエラーが発生しました。もう一度お試しください。');
+        return;
+      }
+    }
+    ////
     this.modalStep = 2;
+    this.cdr.detectChanges();
   }
 
   prevStep() {
@@ -175,10 +197,7 @@ export class HomeComponent implements OnInit {
   async createBoard() {
     if (!this.newBoardName.trim() || !this.currentUser) return;
 
-    // メールアドレスから＠前の部分を取得
     const emailPrefix = this.currentUser.email?.split('@')[0] || 'User';
-
-    // ユーザー入力がある場合はそれを使用、ない場合はメールアドレスのプレフィックス
     const displayName = this.userName.trim() || emailPrefix;
 
     if (this.userName.trim()) {
@@ -191,10 +210,29 @@ export class HomeComponent implements OnInit {
       }
     }
 
-    const customId = this.newBoardId.trim() || Math.random().toString(36).substring(2, 9);
-    const boardRef = doc(this.firestore, `boards/${customId}`);
+    let customId = this.newBoardId.trim();
+    if (customId) {
+      const boardRef = doc(this.firestore, `boards/${customId}`);
+      const boardSnap = await getDoc(boardRef);
+      if (boardSnap.exists()) {
+        alert('このURLパラメータは既に使用されています。別の値を指定してください。');
+        this.modalStep = 1; 
+        this.cdr.detectChanges();
+        return;
+      }
+    } else {
+      let isUnique = false;
+      while (!isUnique) {
+        customId = Math.random().toString(36).substring(2, 9);
+        const boardRef = doc(this.firestore, `boards/${customId}`);
+        const boardSnap = await getDoc(boardRef);
+        if (!boardSnap.exists()) {
+          isUnique = true;
+        }
+      }
+    }
 
-    // 新規作成時に末尾の order を付与
+    const boardRef = doc(this.firestore, `boards/${customId}`);
     await setDoc(boardRef, {
       name: this.newBoardName.trim(),
       ownerId: this.currentUser.uid,
@@ -215,7 +253,12 @@ export class HomeComponent implements OnInit {
         }
       ],
       memberUids: [this.currentUser.uid]
-    }, { merge: true });
+    });
+
+    if (this.currentUser && !this.userBoardOrder.includes(customId)) {
+      this.userBoardOrder.push(customId);
+      await this.boardService.saveBoardOrder(this.currentUser.uid, this.userBoardOrder);
+    }
 
     this.closeModal();
     this.router.navigate(['/board', customId]);
@@ -247,6 +290,11 @@ export class HomeComponent implements OnInit {
     try {
       if (invitation.id) {
         await this.boardService.acceptInvitation(invitation.id, displayName);
+        
+        if (this.currentUser && !this.userBoardOrder.includes(invitation.boardId)) {
+          this.userBoardOrder.push(invitation.boardId);
+          await this.boardService.saveBoardOrder(this.currentUser.uid, this.userBoardOrder);
+        }
         alert('ボードに参加しました！');
         this.goToBoard(invitation.boardId);
       }
@@ -318,6 +366,13 @@ export class HomeComponent implements OnInit {
       }
 
       this.allBoards = this.allBoards.filter(b => b.id !== board.id);
+      this.userBoardOrder = this.userBoardOrder.filter(id => id !== board.id);
+      if (this.currentUser) {
+        this.boardService.saveBoardOrder(this.currentUser.uid, this.userBoardOrder).catch(err => {
+          console.error('順序情報の更新に失敗しました:', err);
+        });
+      }
+
       this.cdr.detectChanges();
     } catch (error: any) {
       alert('ボードの削除に失敗しました: ' + (error.message || 'Unknown error'));
@@ -353,17 +408,17 @@ export class HomeComponent implements OnInit {
 
     if (draggedIndex !== -1 && targetIndex !== -1) {
       // 1. ローカル配列で要素の位置を入れ替え
-      const [movedBoard] = this.allBoards.splice(draggedIndex, 1);
       //const movedBoard = this.allBoards.splice(draggedIndex, 1)[0];
+      const [movedBoard] = this.allBoards.splice(draggedIndex, 1);
       this.allBoards.splice(targetIndex, 0, movedBoard);
 
+      this.userBoardOrder = this.allBoards.map(b => b.id);
       this.cdr.detectChanges();
 
       // 2. ユーザー個別の順序を Firestore に保存（共有ボードの order フィールドは変更しない）
       try {
         if (this.currentUser) {
-          const boardIds = this.allBoards.map(b => b.id);
-          await this.boardService.saveBoardOrder(this.currentUser.uid, boardIds);
+          await this.boardService.saveBoardOrder(this.currentUser.uid, this.userBoardOrder);
         }
       } catch (error) {
         console.error('ユーザー順序の更新に失敗しました:', error);
@@ -373,11 +428,12 @@ export class HomeComponent implements OnInit {
     this.draggedBoard = null;
   }
 
-  startEditBoardName(board: any) {
+  startEditBoardName(event: Event, board: any) {
     if (!this.isBoardAdmin(board)) {
       return;
     }
 
+    event.stopPropagation();
     this.editingBoardId = board.id;
     this.editingBoardNameValue = board.name;
     this.cdr.detectChanges();
@@ -386,12 +442,10 @@ export class HomeComponent implements OnInit {
       const input = document.querySelector(`input[data-board-id="${board.id}"]`) as HTMLInputElement;
       if (input) {
         input.focus();
-        input.select();
       }
     }, 0);
   }
 
-  // async完了後に detectChanges() を呼び出してEnter1回で確実にUIを更新
   async saveBoardName(board: any) {
     if (!this.isBoardAdmin(board)) {
       this.editingBoardId = null;

@@ -10,7 +10,7 @@
           [title]="isAdmin ? 'クリックしてボード名を編集' : ''" (click)="startEditBoardName()">{{ boardName || boardId }}
         </h2>
         <input *ngIf="isEditingBoardName" #boardInput type="text" [(ngModel)]="editingBoardName" maxlength="30"
-          class="board-name-input" autofocus (blur)="saveBoardName()" (keyup.enter)="saveBoardName()"
+          class="board-name-input" (blur)="saveBoardName()" (keyup.enter)="saveBoardName()"
           (keyup.escape)="cancelEditBoardName($event)" />
       </div>
     </div>
@@ -26,7 +26,7 @@
             <h4>お知らせ</h4>
             <div class="header-actions">
               <button class="btn-text-small" (click)="markAllAsRead()" *ngIf="unreadCount > 0">すべて既読</button>
-              <button class="btn-text-small btn-danger-text" (click)="deleteAllNotifications()"
+              <button class="btn-danger-text" (click)="deleteAllNotifications()"
                 *ngIf="notifications.length > 0">すべて削除</button>
             </div>
           </div>
@@ -69,8 +69,8 @@
         <!-- ユーザー名（クリックで編集） -->
         <div class="editable-user-name" (click)="startEditUserName()">
           <span *ngIf="!isEditingUserName" class="user-name">{{ currentUserName }}</span>
-          <input *ngIf="isEditingUserName" type="text" [(ngModel)]="editingUserName" maxlength="20"
-            class="user-name-input" autofocus (blur)="saveUserName()" (keyup.enter)="saveUserName()"
+          <input *ngIf="isEditingUserName" #boardInput type="text" [(ngModel)]="editingUserName" maxlength="20"
+            class="user-name-input" (blur)="saveUserName()" (keyup.enter)="saveUserName()"
             (keyup.escape)="cancelEditUserName($event)" />
         </div>
       </div>
