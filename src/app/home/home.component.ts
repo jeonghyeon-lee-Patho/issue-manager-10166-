@@ -150,6 +150,15 @@ export class HomeComponent implements OnInit {
 
   addColumnSetting() {
     if (!this.newColumnInput.trim()) return;
+    ////
+    const isDuplicate = this.columns.some(
+      col => col.trim().toLowerCase() === this.newColumnInput.trim().toLowerCase()
+    );
+    if (isDuplicate) {
+      alert('同じ名前のリストが既に存在します。');
+      return;
+    }
+    ////
     this.columns.push(this.newColumnInput.trim());
     this.newColumnInput = '';
     this.showAddColumnInput = false;
@@ -410,7 +419,7 @@ export class HomeComponent implements OnInit {
     }
   }
 
-  cancelEditBoardName(event?: KeyboardEvent, board?: any) {
+  cancelEditBoardName(event?: Event, board?: any) {
     if (event) {
       event.stopPropagation();
     }

@@ -398,12 +398,15 @@ export class TasksComponent {
       alert('「未対応」および「検討中」はバックログ専用の予約名のため、リスト名に使用できません。');
       return;
     }
-
-    if (this.columns.includes(trimmedName)) {
+    ////
+    const isDuplicate = this.columns.some(
+      col => col.trim().toLowerCase() === trimmedName.toLowerCase()
+    );
+    if (isDuplicate) {
       alert('同じ名前のリストが既に存在します。');
       return;
     }
-
+    ////
     const updatedColumns = [...this.columns, trimmedName];
     const success = await this.safeSave(updatedColumns, this.tasks);
     if (success) {

@@ -45,7 +45,7 @@
                 <div *ngIf="editingBoardId === board.id" (click)="$event.stopPropagation()">
                   <input type="text" [(ngModel)]="editingBoardNameValue" maxlength="30" class="board-title-input"
                     [attr.data-board-id]="board.id" (blur)="saveBoardName(board)" (keyup.enter)="saveBoardName(board)"
-                    (keyup.escape)="cancelEditBoardName()" (dragstart)="$event.stopPropagation()"
+                    (keyup.escape)="cancelEditBoardName($event,board)" (dragstart)="$event.stopPropagation()"
                     (dragover)="$event.preventDefault()" />
                 </div>
               </div>
@@ -83,7 +83,6 @@
   <!-- 新規作成モーダル（2ステップ構成） -->
   <div *ngIf="showModal" class="modal-overlay">
     <div class="modal-content">
-
       <!-- STEP 1: 基本情報入力 -->
       <div *ngIf="modalStep === 1">
         <h3>新規ボード作成 (1/2) - 基本情報</h3>
